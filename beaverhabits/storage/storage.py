@@ -1,1 +1,1 @@
-import datetime import logging from typing import List, Optional, Protocol from beaverhabits.app.db import User class CheckedRecord(Protocol): \\
+import datetime\nimport logging\nfrom typing import List, Optional, Protocol\nfrom beaverhabits.app.db import User\n\nclass CheckedRecord(Protocol):\n    @property\n    def day(self) -> datetime.date: ...\n\n    @property\n    def done(self) -> bool: ...\n\n    @done.setter\n    def done(self, value: bool) -> None: ...\n\n    def __str__(self):\n        return f\
