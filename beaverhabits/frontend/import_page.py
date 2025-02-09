@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def import_from_json(text: str) -> HabitList:
+async def import_from_json(text: str) -> HabitList:
     try:
         data = json.loads(text)
         habit_list = DictHabitList(data)
@@ -31,22 +31,31 @@ def import_from_json(text: str) -> HabitList:
 
 
 def import_ui_page(user: User):
-    async def handle_upload(event: events.UploadEventArguments):
-        file_content = event.content.read().decode("utf-8")
-        other = import_from_json(file_content)
-        current = await user_storage.get_user_habit_list(user)
+    async def handle_upload(e: events.UploadEventArguments):
+        try:
+            file_content = e.content.read().decode("utf-8")
+            other = await import_from_json(file_content)
+            current = await user_storage.get_user_habit_list(user)
 
-        if current:
-            added, merged, unchanged = calculate_changes(current, other)
-            logger.info(f"Added: {len(added)}, Merged: {len(merged)}, Unchanged: {len(unchanged)}")
-            message = f"Added {len(added)}, Merged {len(merged)}, Unchanged {len(unchanged)} habits."
-        else:
-            added = other.habits
-            logger.info(f"Imported {len(added)} new habits.")
-            message = f"Imported {len(added)} habits."
+            if current:
+                current_ids = {habit.id for habit in current.habits}
+                other_ids = {habit.id for habit in other.habits}
 
-        await user_storage.save_user_habit_list(user, other)
-        ui.notify(message, position="top", color="positive")
+                added = [habit for habit in other.habits if habit.id not in current_ids]
+                merged = [habit for habit in other.habits if habit.id in current_ids]
+                unchanged = [habit for habit in current.habits if habit.id in other_ids]
+
+                logger.info(f"Added: {len(added)}, Merged: {len(merged)}, Unchanged: {len(unchanged)}")
+                message = f"Added {len(added)}, Merged {len(merged)}, Unchanged {len(unchanged)} habits."
+            else:
+                added = other.habits
+                logger.info(f"Imported {len(added)} new habits.")
+                message = f"Imported {len(added)} habits."
+
+            await user_storage.save_user_habit_list(user, other)
+            ui.notify(message, position="top", color="positive")
+        except Exception as error:
+            ui.notify(str(error), color="negative", position="top")
 
     def show_confirmation_dialog():
         with ui.dialog() as dialog, ui.card().classes("w-64"):
@@ -56,22 +65,12 @@ def import_ui_page(user: User):
                 ui.button("No", on_click=lambda: dialog.submit("No"))
         return dialog
 
-    def calculate_changes(current: HabitList, other: HabitList):
-        current_ids = {habit.id for habit in current.habits}
-        other_ids = {habit.id for habit in other.habits}
-
-        added = [habit for habit in other.habits if habit.id not in current_ids]
-        unchanged = [habit for habit in current.habits if habit.id in other_ids]
-        merged = [habit for habit in other.habits if habit.id in current_ids]
-
-        return added, merged, unchanged
-
-    async def confirm_and_upload(event: events.UploadEventArguments):
+    async def confirm_and_upload(e: events.UploadEventArguments):
         dialog = show_confirmation_dialog()
         result = await dialog
         if result != "Yes":
             return
-        await handle_upload(event)
+        await handle_upload(e)
 
     menu_header("Import Habits", target=get_root_path())
 
