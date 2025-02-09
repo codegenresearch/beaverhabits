@@ -5,6 +5,7 @@ from beaverhabits.utils import generate_short_hash
 
 R = TypeVar('R', bound='CheckedRecord')
 H = TypeVar('H', bound='Habit')
+L = TypeVar('L', bound='HabitList')
 
 class CheckedRecord(Protocol):
     @property
@@ -24,7 +25,7 @@ class CheckedRecord(Protocol):
 
 class Habit(Protocol[R]):
     @property
-    def id(self) -> str: ...
+    def id(self) -> str | int: ...
 
     @property
     def name(self) -> str: ...
@@ -36,7 +37,7 @@ class Habit(Protocol[R]):
     def star(self) -> bool: ...
 
     @star.setter
-    def star(self, value: bool) -> None: ...
+    def star(self, value: int) -> None: ...
 
     @property
     def records(self) -> List[R]: ...
@@ -129,8 +130,8 @@ class EnhancedHabit(Habit[R]):
         return self._star
 
     @star.setter
-    def star(self, value: bool) -> None:
-        self._star = value
+    def star(self, value: int) -> None:
+        self._star = bool(value)
 
     @property
     def records(self) -> List[R]:
