@@ -18,22 +18,22 @@ def import_ui_page(user: User):
     async def handle_upload(event: events.UploadEventArguments):
         try:
             text = event.content.read().decode("utf-8")
-            other = await import_from_json(text)
+            to_habit_list = await import_from_json(text)
 
-            current = await user_storage.get_user_habit_list(user)
-            if current is None:
-                current = DictHabitList({"habits": []})
+            from_habit_list = await user_storage.get_user_habit_list(user)
+            if from_habit_list is None:
+                from_habit_list = DictHabitList({"habits": []})
 
             # Determine added, merged, and unchanged habits
-            current_ids = {habit.id for habit in current.habits}
-            other_ids = {habit.id for habit in other.habits}
-            added_ids = other_ids - current_ids
+            from_ids = {habit.id for habit in from_habit_list.habits}
+            to_ids = {habit.id for habit in to_habit_list.habits}
+            added_ids = to_ids - from_ids
 
-            added = [habit for habit in other.habits if habit.id in added_ids]
-            unchanged = [habit for habit in current.habits if habit.id not in added_ids]
+            added = [habit for habit in to_habit_list.habits if habit.id in added_ids]
+            unchanged = [habit for habit in from_habit_list.habits if habit.id not in added_ids]
 
             # Merge habits
-            merged = await current.merge(other)
+            merged = await from_habit_list.merge(to_habit_list)
             await user_storage.save_user_habit_list(user, merged)
 
             # Log the operation
@@ -70,15 +70,6 @@ def import_ui_page(user: User):
 
 
 async def import_from_json(text: str) -> HabitList:
-    try:
-        data = json.loads(text)
-        habit_list = DictHabitList(data)
-        if not habit_list.habits:
-            raise ValueError("No habits found in the JSON data")
-        return habit_list
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to decode JSON: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"An error occurred while importing habits: {e}")
-        raise
+    data = json.loads(text)
+    habit_list = DictHabitList(data)
+    return habit_list
