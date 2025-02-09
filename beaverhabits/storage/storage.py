@@ -1,11 +1,7 @@
 import datetime
-from typing import List, Optional, Protocol, TypeVar, Generic
+from typing import List, Optional, Protocol
 from beaverhabits.app.db import User
 from beaverhabits.utils import generate_short_hash
-
-R = TypeVar('R', bound='CheckedRecord')
-H = TypeVar('H', bound='Habit')
-L = TypeVar('L', bound='HabitList')
 
 class CheckedRecord(Protocol):
     @property
@@ -23,9 +19,9 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit(Protocol, Generic[R]):
+class Habit(Protocol, R: CheckedRecord):
     @property
-    def id(self) -> str: ...
+    def id(self) -> str | int: ...
 
     @property
     def name(self) -> str: ...
@@ -54,9 +50,15 @@ class Habit(Protocol, Generic[R]):
     __repr__ = __str__
 
 
-class HabitList(Protocol, Generic[H]):
+class HabitList(Protocol, H: Habit):
     @property
     def habits(self) -> List[H]: ...
+
+    @property
+    def order(self) -> List[str]: ...
+
+    @order.setter
+    def order(self, value: List[str]) -> None: ...
 
     async def add(self, name: str) -> None: ...
 
@@ -67,13 +69,13 @@ class HabitList(Protocol, Generic[H]):
     async def merge(self, other: 'HabitList[H]') -> 'HabitList[H]': ...
 
 
-class SessionStorage(Protocol, Generic[L]):
+class SessionStorage(Protocol, L: HabitList):
     def get_user_habit_list(self) -> Optional[L]: ...
 
     def save_user_habit_list(self, habit_list: L) -> None: ...
 
 
-class UserStorage(Protocol, Generic[L]):
+class UserStorage(Protocol, L: HabitList):
     async def get_user_habit_list(self, user: User) -> Optional[L]: ...
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
@@ -99,7 +101,7 @@ class EnhancedCheckedRecord(CheckedRecord):
         self._done = value
 
 
-class EnhancedHabit(Habit[R], Generic[R]):
+class EnhancedHabit(Habit[R], R: CheckedRecord):
     def __init__(self, name: str, records: Optional[List[R]] = None, star: bool = False):
         self._id = generate_short_hash(name)
         self._name = name
@@ -138,7 +140,7 @@ class EnhancedHabit(Habit[R], Generic[R]):
             self._records.append(EnhancedCheckedRecord(day, done))
 
 
-class EnhancedHabitList(HabitList[H], Generic[H]):
+class EnhancedHabitList(HabitList[H], H: Habit):
     def __init__(self, habits: Optional[List[H]] = None, order: Optional[List[str]] = None):
         self._habits = habits if habits is not None else []
         self._order = order if order is not None else []
@@ -190,7 +192,7 @@ class EnhancedHabitList(HabitList[H], Generic[H]):
         return EnhancedHabitList(list(result), self._order)
 
 
-class EnhancedSessionStorage(SessionStorage[L], Generic[L]):
+class EnhancedSessionStorage(SessionStorage[L], L: HabitList):
     def __init__(self):
         self._user_habit_list = None
 
@@ -201,7 +203,7 @@ class EnhancedSessionStorage(SessionStorage[L], Generic[L]):
         self._user_habit_list = habit_list
 
 
-class EnhancedUserStorage(UserStorage[L], Generic[L]):
+class EnhancedUserStorage(UserStorage[L], L: HabitList):
     def __init__(self):
         self._user_habit_lists = {}
 
