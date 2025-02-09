@@ -2,12 +2,11 @@ import datetime
 from typing import List, Optional, Protocol, TypeVar
 from pydantic import BaseModel, validator
 
+from beaverhabits.app.db import User
+
 R = TypeVar('R', bound='CheckedRecord')
 H = TypeVar('H', bound='Habit')
-
-class User(BaseModel):
-    id: int
-    username: str
+L = TypeVar('L', bound='HabitList')
 
 class CheckedRecord(Protocol):
     @property
@@ -73,18 +72,18 @@ class HabitList(Protocol[H]):
     async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
 
 
-class SessionStorage(Protocol):
-    def get_user_habit_list(self) -> Optional[HabitList]: ...
+class SessionStorage(Protocol[L]):
+    def get_user_habit_list(self) -> Optional[L]: ...
 
-    def save_user_habit_list(self, habit_list: HabitList) -> None: ...
+    def save_user_habit_list(self, habit_list: L) -> None: ...
 
 
-class UserStorage(Protocol):
-    async def get_user_habit_list(self, user: User) -> Optional[HabitList]: ...
+class UserStorage(Protocol[L]):
+    async def get_user_habit_list(self, user: User) -> Optional[L]: ...
 
-    async def save_user_habit_list(self, user: User, habit_list: HabitList) -> None: ...
+    async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
 
-    async def merge_user_habit_list(self, user: User, other: HabitList) -> HabitList: ...
+    async def merge_user_habit_list(self, user: User, other: L) -> L: ...
 
 
 class HabitAddCard(BaseModel):
