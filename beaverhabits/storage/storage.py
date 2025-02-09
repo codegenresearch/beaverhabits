@@ -1,11 +1,5 @@
 import datetime
-from typing import List, Optional, Protocol, TypeVar, Union
-from beaverhabits.app.db import User
-import logging
-
-# Setting up basic configuration for logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from typing import List, Optional, Protocol, TypeVar
 
 R = TypeVar('R', bound='CheckedRecord')
 H = TypeVar('H', bound='Habit')
@@ -36,7 +30,7 @@ class CheckedRecord(Protocol):
 
 class Habit(Protocol[R]):
     @property
-    def id(self) -> Union[str, int]:
+    def id(self) -> str | int:
         """Get the unique identifier of the habit."""
         ...
 
@@ -95,25 +89,9 @@ class HabitList(Protocol[H]):
         """Remove a habit from the list."""
         ...
 
-    async def get_habit_by(self, habit_id: Union[str, int]) -> Optional[H]:
+    async def get_habit_by(self, habit_id: str | int) -> Optional[H]:
         """Get a habit by its ID."""
         ...
-
-    async def merge(self, other: 'HabitList') -> 'HabitList':
-        """Merge the habits of two lists."""
-        try:
-            result = set(self.habits).symmetric_difference(set(other.habits))
-
-            for self_habit in self.habits:
-                for other_habit in other.habits:
-                    if self_habit == other_habit:
-                        new_habit = await self_habit.merge(other_habit)
-                        result.add(new_habit)
-
-            return type(self)(habits=[h for h in result])
-        except Exception as e:
-            logger.error(f"Error merging habit lists: {e}")
-            raise
 
 
 class SessionStorage(Protocol[L]):
