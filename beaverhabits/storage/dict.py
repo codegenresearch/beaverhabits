@@ -55,6 +55,13 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
+    @id.setter
+    def id(self, value: str) -> None:
+        """
+        Sets the unique identifier for the habit.
+        """
+        self.data["id"] = value
+
     @property
     def name(self) -> str:
         """
@@ -84,7 +91,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = value
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         """
         Returns a list of records associated with the habit.
         """
@@ -94,7 +101,9 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Checks if two habits are equal based on their IDs.
         """
-        return isinstance(other, DictHabit) and self.id == other.id
+        if not isinstance(other, DictHabit):
+            return NotImplemented
+        return self.id == other.id
 
     def __hash__(self) -> int:
         """
@@ -132,7 +141,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     Manages a list of habits with functionalities to add, remove, and retrieve habits.
     """
     @property
-    def habits(self) -> List[DictHabit]:
+    def habits(self) -> list[DictHabit]:
         """
         Returns a sorted list of habits, prioritizing starred habits.
         """
