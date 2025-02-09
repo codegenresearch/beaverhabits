@@ -14,7 +14,7 @@ from beaverhabits.views import user_storage
 logger = logging.getLogger(__name__)
 
 
-def import_from_json(json_text: str) -> HabitList:
+async def import_from_json(json_text: str) -> HabitList:
     try:
         data = json.loads(json_text)
         habit_list = DictHabitList(data)
@@ -29,35 +29,41 @@ def import_from_json(json_text: str) -> HabitList:
         raise
 
 
-def display_import_ui(user: User):
-    with ui.dialog() as dialog, ui.card().classes("w-64"):
-        ui.label("Are you sure? All your current habits will be replaced.")
-        with ui.row():
-            ui.button("Yes", on_click=lambda: dialog.submit("Yes"))
-            ui.button("No", on_click=lambda: dialog.submit("No"))
-
+async def display_import_ui(user: User):
     async def handle_file_upload(event: events.UploadEventArguments):
         try:
-            user_response = await dialog
-            if user_response != "Yes":
-                return
-
             file_content = event.content.read().decode("utf-8")
-            imported_habit_list = import_from_json(file_content)
+            other = await import_from_json(file_content)
 
-            current_habit_list = await user_storage.get_user_habit_list(user)
-            if current_habit_list is None:
-                current_habit_list = DictHabitList({"habits": []})
+            current = await user_storage.get_user_habit_list(user)
+            if current is None:
+                current = DictHabitList({"habits": []})
 
-            merged_habit_list = await current_habit_list.merge(imported_habit_list)
+            # Determine added, merged, and unchanged habits
+            current_ids = {habit.id for habit in current.habits}
+            other_ids = {habit.id for habit in other.habits}
+            added_ids = other_ids - current_ids
+            unchanged_ids = current_ids & other_ids
+
+            added_habits = [habit for habit in other.habits if habit.id in added_ids]
+            unchanged_habits = [habit for habit in current.habits if habit.id in unchanged_ids]
+
+            # Merge habits
+            merged_habit_list = await current.merge(other)
             await user_storage.save_user_habit_list(user, merged_habit_list)
 
+            # Log the operation
+            logger.info(
+                f"Imported {len(added_habits)} new habits, "
+                f"merged {len(unchanged_habits)} existing habits for user {user.email}"
+            )
+
+            # Notify the user
             ui.notify(
-                f"Successfully imported {len(imported_habit_list.habits)} habits",
+                f"Imported {len(added_habits)} new habits and merged {len(unchanged_habits)} existing habits",
                 position="top",
                 color="positive",
             )
-            logger.info(f"Imported {len(imported_habit_list.habits)} habits for user {user.email}")
 
         except json.JSONDecodeError:
             ui.notify("Import failed: Invalid JSON format", color="negative", position="top")
