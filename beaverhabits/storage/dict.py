@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass, field
-from typing import Optional, list
+from typing import Optional
 
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
@@ -54,13 +54,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
         if "id" not in self.data:
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
-
-    @id.setter
-    def id(self, value: str) -> None:
-        """
-        Sets the unique identifier for the habit.
-        """
-        self.data["id"] = value
 
     @property
     def name(self) -> str:
@@ -150,7 +143,10 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         """
         Retrieves a habit by its ID.
         """
-        return next((habit for habit in self.habits if habit.id == habit_id), None)
+        for habit in self.habits:
+            if habit.id == habit_id:
+                return habit
+        return None
 
     async def add(self, name: str) -> None:
         """
