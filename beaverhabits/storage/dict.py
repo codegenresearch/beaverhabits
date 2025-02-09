@@ -83,7 +83,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @status.setter
     def status(self, value: HabitStatus) -> None:
-        self.data["status"] = value
+        self.data["status"] = value.value
 
     async def tick(self, day: datetime.date, done: bool) -> None:
         if record := next((r for r in self.records if r.day == day), None):
@@ -121,7 +121,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
 class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
     def habits(self) -> list[DictHabit]:
-        habits = [DictHabit(d) for d in self.data["habits"] if HabitStatus(d.get("status", HabitStatus.ACTIVE.value)) != HabitStatus.SOLF_DELETED]
+        habits = [
+            DictHabit(d)
+            for d in self.data["habits"]
+            if HabitStatus(d.get("status", HabitStatus.ACTIVE.value)) != HabitStatus.SOLF_DELETED
+        ]
 
         # Sort by order and status
         if self.order:
@@ -150,6 +154,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
         d = {"name": name, "records": [], "id": generate_short_hash(name)}
