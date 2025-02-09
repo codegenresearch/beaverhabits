@@ -153,7 +153,10 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         Returns the list of habits sorted by order and star status.
         """
         ordered_habits = [DictHabit(d) for d in self.data["habits"]]
-        ordered_habits.sort(key=lambda x: (self.order.index(x.id) if x.id in self.order else float('inf'), not x.star))
+        if self.order:
+            ordered_habits.sort(key=lambda x: (self.order.index(x.id) if x.id in self.order else float('inf'), not x.star))
+        else:
+            ordered_habits.sort(key=lambda x: not x.star)
         return ordered_habits
 
     @property
@@ -177,7 +180,6 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
-        return None
 
     async def add(self, name: str) -> None:
         """
