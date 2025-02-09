@@ -108,11 +108,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: bool) -> None:
+    def star(self, value: int) -> None:
         """
         Sets the star status of the habit.
         """
-        self.data["star"] = value
+        self.data["star"] = bool(value)
 
     @property
     def records(self) -> list[DictRecord]:
