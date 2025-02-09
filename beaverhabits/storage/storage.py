@@ -19,7 +19,7 @@ class CheckedRecord(Protocol):
     def done(self, value: bool) -> None:
         ...
 
-    def __str__(self) -> str:
+    def __str__(self):
         return f"{self.day} {'[x]' if self.done else '[ ]'}"
 
     __repr__ = __str__
@@ -43,7 +43,7 @@ class Habit(Protocol[R]):
         ...
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         ...
 
     @property
@@ -57,7 +57,7 @@ class Habit(Protocol[R]):
     async def tick(self, day: datetime.date, done: bool) -> None:
         ...
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.name
 
     __repr__ = __str__
