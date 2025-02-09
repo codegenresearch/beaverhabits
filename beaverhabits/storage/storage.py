@@ -43,7 +43,7 @@ class Habit(Protocol, Generic[R]):
     def records(self) -> List[R]: ...
 
     @property
-    def ticked_days(self) -> list[datetime.date]:
+    def ticked_days(self) -> List[datetime.date]:
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None: ...
@@ -100,7 +100,7 @@ class EnhancedCheckedRecord(CheckedRecord):
 
 
 class EnhancedHabit(Habit[EnhancedCheckedRecord]):
-    def __init__(self, name: str, records: List[EnhancedCheckedRecord] = None, star: bool = False):
+    def __init__(self, name: str, records: Optional[List[EnhancedCheckedRecord]] = None, star: bool = False):
         self._id = generate_short_hash(name)
         self._name = name
         self._star = star
@@ -139,7 +139,7 @@ class EnhancedHabit(Habit[EnhancedCheckedRecord]):
 
 
 class EnhancedHabitList(HabitList[EnhancedHabit]):
-    def __init__(self, habits: List[EnhancedHabit] = None, order: List[str] = None):
+    def __init__(self, habits: Optional[List[EnhancedHabit]] = None, order: Optional[List[str]] = None):
         self._habits = habits if habits is not None else []
         self._order = order if order is not None else []
 
