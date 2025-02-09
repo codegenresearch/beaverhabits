@@ -79,14 +79,14 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["name"] = value
 
     @property
-    def star(self) -> int:
+    def star(self) -> bool:
         """
-        Returns the star status of the habit as an integer.
+        Returns the star status of the habit.
         """
-        return self.data.get("star", 0)
+        return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         """
         Sets the star status of the habit.
         """
@@ -103,8 +103,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Updates the completion status of a record for a specific day.
         """
-        record = next((r for r in self.records if r.day == day), None)
-        if record:
+        if (record := next((r for r in self.records if r.day == day), None)) is not None:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
@@ -124,7 +123,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     def __str__(self):
         """
-        Returns a string representation of the habit including its ID.
+        Returns a string representation of the habit including its ID and name.
         """
         return f"{self.id}: {self.name}"
 
@@ -190,7 +189,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
             "name": name,
             "records": [],
             "id": generate_short_hash(name),
-            "star": 0
+            "star": False
         }
         self.data["habits"].append(new_habit)
         self.data["order"].append(new_habit["id"])
