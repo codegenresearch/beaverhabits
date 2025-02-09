@@ -45,13 +45,6 @@ class Habit[R: CheckedRecord](Protocol):
 
     async def tick(self, day: datetime.date, done: bool) -> None: ...
 
-    async def merge(self, other: 'Habit') -> 'Habit': ...
-
-    def __str__(self):
-        return self.name
-
-    __repr__ = __str__
-
 
 class HabitList[H: Habit](Protocol):
 
@@ -63,8 +56,6 @@ class HabitList[H: Habit](Protocol):
     async def remove(self, item: H) -> None: ...
 
     async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
-
-    async def merge(self, other: 'HabitList') -> 'HabitList': ...
 
 
 class SessionStorage[L: HabitList](Protocol):
@@ -78,4 +69,4 @@ class UserStorage[L: HabitList](Protocol):
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
 
-    async def merge_user_habit_list(self, user: User, other_habit_list: L) -> L: ...
+    async def merge_user_habit_list(self, user: User, other: L) -> L: ...
