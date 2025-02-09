@@ -55,6 +55,13 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
+    @id.setter
+    def id(self, value: str) -> None:
+        """
+        Sets the unique identifier for the habit.
+        """
+        self.data["id"] = value
+
     @property
     def name(self) -> str:
         """
@@ -84,7 +91,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         """
         Returns the list of records for the habit.
         """
@@ -94,9 +101,9 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Marks the habit as done or not done for a specific day.
         """
-        record_data = next((r for r in self.data["records"] if datetime.datetime.strptime(r["day"], DAY_MASK).date() == day), None)
-        if record_data:
-            record_data["done"] = done
+        record = next((r for r in self.records if r.day == day), None)
+        if record:
+            record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
 
@@ -118,11 +125,10 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Merges another habit's records into this habit.
         """
-        existing_days = {datetime.datetime.strptime(r["day"], DAY_MASK).date() for r in self.data["records"]}
-        for record in other.data["records"]:
-            record_day = datetime.datetime.strptime(record["day"], DAY_MASK).date()
-            if record_day not in existing_days:
-                self.data["records"].append(record)
+        existing_days = {r.day for r in self.records}
+        for record in other.records:
+            if record.day not in existing_days:
+                self.data["records"].append({"day": record.day.strftime(DAY_MASK), "done": record.done})
         return self
 
 @dataclass
@@ -131,7 +137,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     Represents a list of habits.
     """
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         """
         Returns the list of habits, sorted by star status.
         """
