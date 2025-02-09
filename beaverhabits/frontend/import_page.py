@@ -22,12 +22,12 @@ async def import_from_json(text: str) -> HabitList:
         if not habit_list.habits:
             raise ValueError("No habits found in the imported data.")
         return habit_list
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to decode JSON: {e}")
+    except json.JSONDecodeError:
+        logger.error("Failed to decode JSON.")
         raise ValueError("Invalid JSON format.")
-    except Exception as e:
+    except ValueError as e:
         logger.error(f"Failed to import habits: {e}")
-        raise ValueError("Failed to import habits.")
+        raise
 
 
 def import_ui_page(user: User):
@@ -43,10 +43,9 @@ def import_ui_page(user: User):
 
                 added = [habit for habit in other.habits if habit.id not in current_ids]
                 merged = [habit for habit in other.habits if habit.id in current_ids]
-                unchanged = [habit for habit in current.habits if habit.id in other_ids]
 
-                logger.info(f"Added: {len(added)}, Merged: {len(merged)}, Unchanged: {len(unchanged)}")
-                message = f"Added {len(added)}, Merged {len(merged)}, Unchanged {len(unchanged)} habits."
+                logger.info(f"Added: {len(added)}, Merged: {len(merged)}")
+                message = f"Added {len(added)}, Merged {len(merged)} habits."
             else:
                 added = other.habits
                 logger.info(f"Imported {len(added)} new habits.")
@@ -54,8 +53,11 @@ def import_ui_page(user: User):
 
             await user_storage.save_user_habit_list(user, other)
             ui.notify(message, position="top", color="positive")
-        except Exception as error:
-            ui.notify(str(error), color="negative", position="top")
+        except ValueError as e:
+            ui.notify(str(e), color="negative", position="top")
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            ui.notify("An unexpected error occurred.", color="negative", position="top")
 
     def show_confirmation_dialog():
         with ui.dialog() as dialog, ui.card().classes("w-64"):
@@ -68,9 +70,8 @@ def import_ui_page(user: User):
     async def confirm_and_upload(e: events.UploadEventArguments):
         dialog = show_confirmation_dialog()
         result = await dialog
-        if result != "Yes":
-            return
-        await handle_upload(e)
+        if result == "Yes":
+            await handle_upload(e)
 
     menu_header("Import Habits", target=get_root_path())
 
