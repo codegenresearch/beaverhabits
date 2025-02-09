@@ -55,13 +55,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
-    @id.setter
-    def id(self, value: str) -> None:
-        """
-        Sets the unique identifier for the habit.
-        """
-        self.data["id"] = value
-
     @property
     def name(self) -> str:
         """
@@ -84,14 +77,14 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         """
         Sets the star status of the habit.
         """
-        self.data["star"] = bool(value)
+        self.data["star"] = value
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         """
         Returns the list of records for the habit.
         """
@@ -137,7 +130,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     Represents a list of habits.
     """
     @property
-    def habits(self) -> List[DictHabit]:
+    def habits(self) -> list[DictHabit]:
         """
         Returns the list of habits, sorted by star status.
         """
