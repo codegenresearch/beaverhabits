@@ -34,24 +34,25 @@ def import_ui_page(user: User):
     async def handle_upload(e: events.UploadEventArguments):
         try:
             text = e.content.read().decode("utf-8")
-            other = await import_from_json(text)
-            current = await user_storage.get_user_habit_list(user)
+            imported_habit_list = await import_from_json(text)
+            current_habit_list = await user_storage.get_user_habit_list(user)
 
-            if current:
-                current_ids = {habit.id for habit in current.habits}
-                other_ids = {habit.id for habit in other.habits}
+            if current_habit_list:
+                current_ids = {habit.id for habit in current_habit_list.habits}
+                imported_ids = {habit.id for habit in imported_habit_list.habits}
 
-                added = [habit for habit in other.habits if habit.id not in current_ids]
-                merged = [habit for habit in other.habits if habit.id in current_ids]
+                added_habits = [habit for habit in imported_habit_list.habits if habit.id not in current_ids]
+                merged_habits = [habit for habit in imported_habit_list.habits if habit.id in current_ids]
+                unchanged_habits = [habit for habit in current_habit_list.habits if habit.id not in imported_ids]
 
-                logger.info(f"Added: {len(added)}, Merged: {len(merged)}")
-                message = f"Added {len(added)}, Merged {len(merged)} habits."
+                logger.info(f"Added: {len(added_habits)}, Merged: {len(merged_habits)}, Unchanged: {len(unchanged_habits)}")
+                message = f"Added {len(added_habits)}, Merged {len(merged_habits)} habits."
             else:
-                added = other.habits
-                logger.info(f"Imported {len(added)} new habits.")
-                message = f"Imported {len(added)} habits."
+                added_habits = imported_habit_list.habits
+                logger.info(f"Imported {len(added_habits)} new habits.")
+                message = f"Imported {len(added_habits)} habits."
 
-            await user_storage.save_user_habit_list(user, other)
+            await user_storage.save_user_habit_list(user, imported_habit_list)
             ui.notify(message, position="top", color="positive")
         except ValueError as e:
             ui.notify(str(e), color="negative", position="top")
