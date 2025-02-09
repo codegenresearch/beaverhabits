@@ -25,8 +25,7 @@ class DictRecord(CheckedRecord, DictStorage):
         """
         Returns the day of the record as a datetime.date object.
         """
-        date = datetime.datetime.strptime(self.data["day"], DAY_MASK)
-        return date.date()
+        return datetime.datetime.strptime(self.data["day"], DAY_MASK).date()
 
     @property
     def done(self) -> bool:
@@ -92,7 +91,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = bool(value)
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         """
         Returns the list of records for the habit.
         """
@@ -102,11 +101,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Marks the habit as done or not done for a specific day.
         """
-        if record := next((r for r in self.records if r.day == day), None):
+        record = next((r for r in self.records if r.day == day), None)
+        if record:
             record.done = done
         else:
-            data = {"day": day.strftime(DAY_MASK), "done": done}
-            self.data["records"].append(data)
+            self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
 
     def __eq__(self, other: object) -> bool:
         """
@@ -138,7 +137,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     Represents a list of habits.
     """
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         """
         Returns the list of habits, sorted by star status.
         """
@@ -153,14 +152,12 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
-        return None
 
     async def add(self, name: str) -> None:
         """
         Adds a new habit to the list.
         """
-        d = {"name": name, "records": [], "id": generate_short_hash(name)}
-        self.data["habits"].append(d)
+        self.data["habits"].append({"name": name, "records": [], "id": generate_short_hash(name)})
 
     async def remove(self, item: DictHabit) -> None:
         """
