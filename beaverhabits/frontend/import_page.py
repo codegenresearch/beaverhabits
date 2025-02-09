@@ -1,4 +1,5 @@
 import json
+import logging
 
 from nicegui import events, ui
 
@@ -9,13 +10,23 @@ from beaverhabits.storage.meta import get_root_path
 from beaverhabits.storage.storage import HabitList
 from beaverhabits.views import user_storage
 
+# Setting up logging
+logger = logging.getLogger(__name__)
 
-def convert_json_to_habit_list(json_text: str) -> HabitList:
-    data = json.loads(json_text)
-    habit_list = DictHabitList(data)
-    if not habit_list.habits:
-        raise ValueError("No habits found in the JSON data")
-    return habit_list
+
+def import_from_json(json_text: str) -> HabitList:
+    try:
+        data = json.loads(json_text)
+        habit_list = DictHabitList(data)
+        if not habit_list.habits:
+            raise ValueError("No habits found in the JSON data")
+        return habit_list
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to decode JSON: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"An error occurred while importing habits: {e}")
+        raise
 
 
 def display_import_ui(user: User):
@@ -32,17 +43,28 @@ def display_import_ui(user: User):
                 return
 
             file_content = event.content.read().decode("utf-8")
-            new_habit_list = convert_json_to_habit_list(file_content)
-            await user_storage.merge_user_habit_list(user, new_habit_list)
+            imported_habit_list = import_from_json(file_content)
+
+            current_habit_list = await user_storage.get_user_habit_list(user)
+            if current_habit_list is None:
+                current_habit_list = DictHabitList({"habits": []})
+
+            merged_habit_list = await current_habit_list.merge(imported_habit_list)
+            await user_storage.save_user_habit_list(user, merged_habit_list)
+
             ui.notify(
-                f"Successfully imported {len(new_habit_list.habits)} habits",
+                f"Successfully imported {len(imported_habit_list.habits)} habits",
                 position="top",
                 color="positive",
             )
+            logger.info(f"Imported {len(imported_habit_list.habits)} habits for user {user.email}")
+
         except json.JSONDecodeError:
             ui.notify("Import failed: Invalid JSON format", color="negative", position="top")
+            logger.error("Import failed: Invalid JSON format")
         except Exception as error:
             ui.notify(f"Import failed: {str(error)}", color="negative", position="top")
+            logger.error(f"Import failed: {str(error)}")
 
     menu_header("Import Habits", target=get_root_path())
 
