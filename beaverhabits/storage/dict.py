@@ -121,32 +121,26 @@ class DictHabit(Habit[DictRecord], DictStorage):
 class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
     def habits(self) -> list[DictHabit]:
-        status_order = {
-            HabitStatus.ACTIVE: 1,
-            HabitStatus.ARCHIVED: 2,
-            HabitStatus.SOLF_DELETED: 3
-        }
-
-        habits = [
-            DictHabit(d)
-            for d in self.data["habits"]
+        # Filter out habits with status SOLF_DELETED
+        valid_habits = [
+            DictHabit(d) for d in self.data["habits"]
             if DictHabit(d).status != HabitStatus.SOLF_DELETED
         ]
 
-        # Sort by order and then by status
+        # Sort by order first, then by status
         if self.order:
-            habits.sort(
+            valid_habits.sort(
                 key=lambda x: (
                     self.order.index(str(x.id))
                     if str(x.id) in self.order
                     else float("inf"),
-                    status_order[x.status]
+                    x.status.value
                 )
             )
         else:
-            habits.sort(key=lambda x: status_order[x.status])
+            valid_habits.sort(key=lambda x: x.status.value)
 
-        return habits
+        return valid_habits
 
     @property
     def order(self) -> List[str]:
