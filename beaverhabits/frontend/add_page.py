@@ -1,1 +1,1 @@
-from nicegui import ui\n\nfrom beaverhabits.frontend.components import (\n    HabitAddButton,\n    HabitDeleteButton,\n    HabitNameInput,\n    HabitStarCheckbox,\n)\nfrom beaverhabits.frontend.layout import layout\nfrom beaverhabits.storage.storage import HabitList\n\ngrid_classes = \
+from nicegui import ui\n\nfrom beaverhabits.frontend.components import HabitAddButton, HabitDeleteButton, HabitNameInput, HabitStarCheckbox\nfrom beaverhabits.frontend.layout import layout\nfrom beaverhabits.storage.storage import HabitList\n\ngroup_classes = \
