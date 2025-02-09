@@ -19,18 +19,7 @@ class DictStorage:
 class DictRecord(CheckedRecord, DictStorage):
     """
     Represents a single record of a habit, including the day and whether it was completed.
-
-    Attributes:
-        data (dict): A dictionary containing the record's data.
-
-    Example:
-        >>> record = DictRecord({"day": "2023-10-01", "done": True})
-        >>> record.day
-        datetime.date(2023, 10, 1)
-        >>> record.done
-        True
     """
-
     @property
     def day(self) -> datetime.date:
         """
@@ -56,20 +45,7 @@ class DictRecord(CheckedRecord, DictStorage):
 class DictHabit(Habit[DictRecord], DictStorage):
     """
     Represents a habit with a name, star status, and a list of records.
-
-    Attributes:
-        data (dict): A dictionary containing the habit's data.
-
-    Example:
-        >>> habit = DictHabit({"name": "Exercise", "records": [{"day": "2023-10-01", "done": True}], "id": "abc123"})
-        >>> habit.name
-        'Exercise'
-        >>> habit.star
-        False
-        >>> habit.records
-        [DictRecord(data={'day': '2023-10-01', 'done': True})]
     """
-
     @property
     def id(self) -> str:
         """
@@ -78,13 +54,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
         if "id" not in self.data:
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
-
-    @id.setter
-    def id(self, value: str) -> None:
-        """
-        Sets the unique identifier for the habit.
-        """
-        self.data["id"] = value
 
     @property
     def name(self) -> str:
@@ -108,14 +77,14 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         """
         Sets the star status of the habit.
         """
-        self.data["star"] = bool(value)
+        self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         """
         Returns a list of records associated with the habit.
         """
@@ -125,9 +94,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Checks if two habits are equal based on their IDs.
         """
-        if not isinstance(other, DictHabit):
-            return NotImplemented
-        return self.id == other.id
+        return isinstance(other, DictHabit) and self.id == other.id
 
     def __hash__(self) -> int:
         """
@@ -139,11 +106,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Updates the completion status of a record for a specific day.
         """
-        if record := next((r for r in self.records if r.day == day), None):
+        record = next((r for r in self.records if r.day == day), None)
+        if record:
             record.done = done
         else:
-            data = {"day": day.strftime(DAY_MASK), "done": done}
-            self.data["records"].append(data)
+            self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
 
     def merge(self, other: 'DictHabit') -> 'DictHabit':
         """
@@ -163,18 +130,9 @@ class DictHabit(Habit[DictRecord], DictStorage):
 class DictHabitList(HabitList[DictHabit], DictStorage):
     """
     Manages a list of habits with functionalities to add, remove, and retrieve habits.
-
-    Attributes:
-        data (dict): A dictionary containing the list of habits.
-
-    Example:
-        >>> habit_list = DictHabitList({"habits": [{"name": "Exercise", "records": [{"day": "2023-10-01", "done": True}], "id": "abc123"}]})
-        >>> habit_list.habits
-        [DictHabit(data={'name': 'Exercise', 'records': [{'day': '2023-10-01', 'done': True}], 'id': 'abc123'})]
     """
-
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         """
         Returns a sorted list of habits, prioritizing starred habits.
         """
