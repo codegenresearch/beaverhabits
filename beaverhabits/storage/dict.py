@@ -70,20 +70,20 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
-        return [DictRecord(d) for d in self.data["records"]]
+    def records(self) -> List[DictRecord]:
+        return [DictRecord(d) for d in self.data.get("records", [])]
 
     @property
     def status(self) -> HabitStatus:
-        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE))
+        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE.value))
 
     @status.setter
     def status(self, value: HabitStatus) -> None:
-        self.data["status"] = value
+        self.data["status"] = value.value
 
     async def tick(self, day: datetime.date, done: bool) -> None:
         if record := next((r for r in self.records if r.day == day), None):
@@ -120,7 +120,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         # Filter out habits with status SOLF_DELETED
         valid_habits = [
             DictHabit(d) for d in self.data["habits"]
@@ -128,17 +128,15 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         ]
 
         # Sort by order first, then by status
-        if self.order:
-            valid_habits.sort(
-                key=lambda x: (
-                    self.order.index(str(x.id))
-                    if str(x.id) in self.order
-                    else float("inf"),
-                    x.status.value
-                )
+        o = self.order
+        status_order = {status: idx for idx, status in enumerate(HabitStatus)}
+
+        valid_habits.sort(
+            key=lambda x: (
+                o.index(str(x.id)) if str(x.id) in o else float("inf"),
+                status_order[x.status]
             )
-        else:
-            valid_habits.sort(key=lambda x: x.status.value)
+        )
 
         return valid_habits
 
@@ -154,6 +152,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
         d = {"name": name, "records": [], "id": generate_short_hash(name)}
