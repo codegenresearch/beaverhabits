@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Optional, Protocol, TypeVar
+from typing import List, Optional, Protocol, TypeVar, Generic
 from beaverhabits.app.db import User
 from beaverhabits.utils import generate_short_hash
 
@@ -23,7 +23,7 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit(Protocol, H: CheckedRecord):
+class Habit(Protocol, Generic[H]):
     @property
     def id(self) -> str | int: ...
 
@@ -40,10 +40,10 @@ class Habit(Protocol, H: CheckedRecord):
     def star(self, value: bool) -> None: ...
 
     @property
-    def records(self) -> list[H]: ...
+    def records(self) -> List[H]: ...
 
     @property
-    def ticked_days(self) -> list[datetime.date]:
+    def ticked_days(self) -> List[datetime.date]:
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None: ...
@@ -54,27 +54,27 @@ class Habit(Protocol, H: CheckedRecord):
     __repr__ = __str__
 
 
-class HabitList(Protocol, H: Habit):
+class HabitList(Protocol, Generic[H]):
     @property
-    def habits(self) -> list[H]: ...
+    def habits(self) -> List[H]: ...
 
     async def add(self, name: str) -> None: ...
 
     async def remove(self, item: H) -> None: ...
 
-    async def get_habit_by(self, habit_id: str | int) -> H | None: ...
+    async def get_habit_by(self, habit_id: str | int) -> Optional[H]: ...
 
     async def merge(self, other: 'HabitList[H]') -> 'HabitList[H]': ...
 
 
-class SessionStorage(Protocol, L: HabitList):
-    def get_user_habit_list(self) -> L | None: ...
+class SessionStorage(Protocol, Generic[L]):
+    def get_user_habit_list(self) -> Optional[L]: ...
 
     def save_user_habit_list(self, habit_list: L) -> None: ...
 
 
-class UserStorage(Protocol, L: HabitList):
-    async def get_user_habit_list(self, user: User) -> L | None: ...
+class UserStorage(Protocol, Generic[L]):
+    async def get_user_habit_list(self, user: User) -> Optional[L]: ...
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
 
@@ -99,8 +99,8 @@ class EnhancedCheckedRecord(CheckedRecord):
         self._done = value
 
 
-class EnhancedHabit(Habit, R: EnhancedCheckedRecord):
-    def __init__(self, name: str, records: list[R] | None = None, star: bool = False):
+class EnhancedHabit(Habit[R], Generic[R]):
+    def __init__(self, name: str, records: Optional[List[R]] = None, star: bool = False):
         self._id = generate_short_hash(name)
         self._name = name
         self._star = star
@@ -128,7 +128,7 @@ class EnhancedHabit(Habit, R: EnhancedCheckedRecord):
         self._star = value
 
     @property
-    def records(self) -> list[R]:
+    def records(self) -> List[R]:
         return self._records
 
     async def tick(self, day: datetime.date, done: bool) -> None:
@@ -138,13 +138,13 @@ class EnhancedHabit(Habit, R: EnhancedCheckedRecord):
             self._records.append(EnhancedCheckedRecord(day, done))
 
 
-class EnhancedHabitList(HabitList, H: EnhancedHabit):
-    def __init__(self, habits: list[H] | None = None, order: list[str] | None = None):
+class EnhancedHabitList(HabitList[H], Generic[H]):
+    def __init__(self, habits: Optional[List[H]] = None, order: Optional[List[str]] = None):
         self._habits = habits if habits is not None else []
         self._order = order if order is not None else []
 
     @property
-    def habits(self) -> list[H]:
+    def habits(self) -> List[H]:
         habits = self._habits.copy()
         if self._order:
             habits.sort(
@@ -159,11 +159,11 @@ class EnhancedHabitList(HabitList, H: EnhancedHabit):
         return habits
 
     @property
-    def order(self) -> list[str]:
+    def order(self) -> List[str]:
         return self._order
 
     @order.setter
-    def order(self, value: list[str]) -> None:
+    def order(self, value: List[str]) -> None:
         self._order = value
 
     async def add(self, name: str) -> None:
@@ -173,12 +173,12 @@ class EnhancedHabitList(HabitList, H: EnhancedHabit):
     async def remove(self, item: H) -> None:
         self._habits.remove(item)
 
-    async def get_habit_by(self, habit_id: str | int) -> H | None:
+    async def get_habit_by(self, habit_id: str | int) -> Optional[H]:
         for habit in self._habits:
             if habit.id == habit_id:
                 return habit
 
-    async def merge(self, other: 'EnhancedHabitList') -> 'EnhancedHabitList':
+    async def merge(self, other: 'EnhancedHabitList[H]') -> 'EnhancedHabitList[H]':
         result = set(self._habits).symmetric_difference(set(other._habits))
 
         for self_habit in self._habits:
@@ -190,22 +190,22 @@ class EnhancedHabitList(HabitList, H: EnhancedHabit):
         return EnhancedHabitList(list(result), self._order)
 
 
-class EnhancedSessionStorage(SessionStorage, L: EnhancedHabitList):
+class EnhancedSessionStorage(SessionStorage[L], Generic[L]):
     def __init__(self):
         self._user_habit_list = None
 
-    def get_user_habit_list(self) -> L | None:
+    def get_user_habit_list(self) -> Optional[L]:
         return self._user_habit_list
 
     def save_user_habit_list(self, habit_list: L) -> None:
         self._user_habit_list = habit_list
 
 
-class EnhancedUserStorage(UserStorage, L: EnhancedHabitList):
+class EnhancedUserStorage(UserStorage[L], Generic[L]):
     def __init__(self):
         self._user_habit_lists = {}
 
-    async def get_user_habit_list(self, user: User) -> L | None:
+    async def get_user_habit_list(self, user: User) -> Optional[L]:
         return self._user_habit_lists.get(user.id)
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None:
