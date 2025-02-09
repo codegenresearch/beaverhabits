@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass, field
-from typing import Optional, list
+from typing import Optional, List
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 
@@ -67,10 +67,10 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @star.setter
     def star(self, value: int) -> None:
-        self.data["star"] = bool(value)
+        self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
     async def tick(self, day: datetime.date, done: bool) -> None:
@@ -100,7 +100,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return hash(self.id)
 
     def __str__(self) -> str:
-        return self.name
+        return f"{self.id}: {self.name}"
 
     __repr__ = __str__
 
@@ -108,7 +108,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 class DictHabitList(HabitList[DictHabit], DictStorage):
 
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         habits = [DictHabit(d) for d in self.data["habits"]]
         if self.order:
             habits.sort(key=lambda x: self.order.index(x.id) if x.id in self.order else float('inf'))
@@ -117,17 +117,18 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return habits
 
     @property
-    def order(self) -> list[str]:
+    def order(self) -> List[str]:
         return self.data.get("order", [])
 
     @order.setter
-    def order(self, value: list[str]) -> None:
+    def order(self, value: List[str]) -> None:
         self.data["order"] = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
         d = {"name": name, "records": [], "id": generate_short_hash(name)}
