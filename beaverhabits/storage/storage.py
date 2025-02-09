@@ -23,9 +23,9 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit(Protocol, Generic[H]):
+class Habit(Protocol, Generic[R]):
     @property
-    def id(self) -> str | int: ...
+    def id(self) -> str: ...
 
     @property
     def name(self) -> str: ...
@@ -37,13 +37,13 @@ class Habit(Protocol, Generic[H]):
     def star(self) -> bool: ...
 
     @star.setter
-    def star(self, value: bool) -> None: ...
+    def star(self, value: int) -> None: ...
 
     @property
-    def records(self) -> List[H]: ...
+    def records(self) -> List[R]: ...
 
     @property
-    def ticked_days(self) -> List[datetime.date]:
+    def ticked_days(self) -> list[datetime.date]:
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None: ...
@@ -62,7 +62,7 @@ class HabitList(Protocol, Generic[H]):
 
     async def remove(self, item: H) -> None: ...
 
-    async def get_habit_by(self, habit_id: str | int) -> Optional[H]: ...
+    async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
 
     async def merge(self, other: 'HabitList[H]') -> 'HabitList[H]': ...
 
@@ -124,8 +124,8 @@ class EnhancedHabit(Habit[R], Generic[R]):
         return self._star
 
     @star.setter
-    def star(self, value: bool) -> None:
-        self._star = value
+    def star(self, value: int) -> None:
+        self._star = bool(value)
 
     @property
     def records(self) -> List[R]:
@@ -173,7 +173,7 @@ class EnhancedHabitList(HabitList[H], Generic[H]):
     async def remove(self, item: H) -> None:
         self._habits.remove(item)
 
-    async def get_habit_by(self, habit_id: str | int) -> Optional[H]:
+    async def get_habit_by(self, habit_id: str) -> Optional[H]:
         for habit in self._habits:
             if habit.id == habit_id:
                 return habit
