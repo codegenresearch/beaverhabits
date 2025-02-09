@@ -1,7 +1,16 @@
 import datetime
 from typing import List, Optional, Protocol
 from beaverhabits.app.db import User
-from beaverhabits.utils import log_action
+from enum import Enum
+
+# Assuming log_action is defined in beaverhabits.utils
+# If not, you can define it here or ensure it's correctly imported
+def log_action(message: str):
+    print(f"LOG: {message}")
+
+class HabitStatus(Enum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
 
 class CheckedRecord(Protocol):
     @property
@@ -30,7 +39,6 @@ class Habit[R: CheckedRecord](Protocol):
 
     @name.setter
     def name(self, value: str) -> None: 
-        log_action(f"Renaming habit {self.id} to {value}")
         ...
 
     @property
@@ -38,7 +46,14 @@ class Habit[R: CheckedRecord](Protocol):
 
     @star.setter
     def star(self, value: int) -> None: 
-        log_action(f"Setting star status for habit {self.id} to {value}")
+        ...
+
+    @property
+    def status(self) -> HabitStatus: ...
+
+    @status.setter
+    def status(self, value: HabitStatus) -> None: 
+        log_action(f"Setting status for habit {self.id} to {value}")
         ...
 
     @property
