@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 import datetime
-from typing import List, Optional
+from typing import list, Optional
 
-from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList, HabitStatus
+from beaverhabits.storage.storage import CheckedRecord, HabitStatus, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 
 DAY_MASK = "%Y-%m-%d"
@@ -70,20 +70,20 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: bool) -> None:
-        self.data["star"] = value
+    def star(self, value: int) -> None:
+        self.data["star"] = bool(value)
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         return [DictRecord(d) for d in self.data.get("records", [])]
 
     @property
     def status(self) -> HabitStatus:
-        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE.value))
+        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE))
 
     @status.setter
     def status(self, value: HabitStatus) -> None:
-        self.data["status"] = value.value
+        self.data["status"] = value
 
     async def tick(self, day: datetime.date, done: bool) -> None:
         if record := next((r for r in self.records if r.day == day), None):
@@ -120,7 +120,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
-    def habits(self) -> List[DictHabit]:
+    def habits(self) -> list[DictHabit]:
         # Filter out habits with status SOLF_DELETED
         valid_habits = [
             DictHabit(d) for d in self.data["habits"]
@@ -141,11 +141,11 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return valid_habits
 
     @property
-    def order(self) -> List[str]:
+    def order(self) -> list[str]:
         return self.data.get("order", [])
 
     @order.setter
-    def order(self, value: List[str]) -> None:
+    def order(self, value: list[str]) -> None:
         self.data["order"] = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
