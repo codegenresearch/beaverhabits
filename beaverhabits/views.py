@@ -33,19 +33,16 @@ def get_session_habit_list() -> HabitList | None:
     return session_storage.get_user_habit_list()
 
 async def get_session_habit(habit_id: str) -> Habit:
-    habit_list = get_session_habit_list()
-    if habit_list is None:
+    if (habit_list := get_session_habit_list()) is None:
         raise HTTPException(status_code=404, detail="Habit list not found")
 
-    habit = await habit_list.get_habit_by(habit_id)
-    if habit is None:
+    if (habit := await habit_list.get_habit_by(habit_id)) is None:
         raise HTTPException(status_code=404, detail="Habit not found")
 
     return habit
 
 def get_or_create_session_habit_list(days: List[datetime.date]) -> HabitList:
-    habit_list = get_session_habit_list()
-    if habit_list is not None:
+    if (habit_list := get_session_habit_list()) is not None:
         return habit_list
 
     habit_list = dummy_habit_list(days)
@@ -56,12 +53,10 @@ async def get_user_habit_list(user: User) -> HabitList | None:
     return await user_storage.get_user_habit_list(user)
 
 async def get_user_habit(user: User, habit_id: str) -> Habit:
-    habit_list = await get_user_habit_list(user)
-    if habit_list is None:
+    if (habit_list := await get_user_habit_list(user)) is None:
         raise HTTPException(status_code=404, detail="Habit list not found")
 
-    habit = await habit_list.get_habit_by(habit_id)
-    if habit is None:
+    if (habit := await habit_list.get_habit_by(habit_id)) is None:
         raise HTTPException(status_code=404, detail="Habit not found")
 
     return habit
@@ -70,8 +65,7 @@ async def get_or_create_user_habit_list(
     user: User, 
     days: List[datetime.date]
 ) -> HabitList:
-    habit_list = await get_user_habit_list(user)
-    if habit_list is not None:
+    if (habit_list := await get_user_habit_list(user)) is not None:
         return habit_list
 
     habit_list = dummy_habit_list(days)
@@ -80,12 +74,12 @@ async def get_or_create_user_habit_list(
 
 async def export_user_habit_list(
     habit_list: HabitList, 
-    user_identify: str
+    user_identifier: str
 ) -> None:
     # Convert habit list to JSON format and download as a binary file
     if isinstance(habit_list, DictHabitList):
         data = {
-            "user_email": user_identify,
+            "user_email": user_identifier,
             "exported_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             **habit_list.data,
         }
@@ -99,8 +93,7 @@ async def merge_user_habit_lists(
     user: User, 
     other_habit_list: HabitList
 ) -> HabitList:
-    user_habit_list = await get_user_habit_list(user)
-    if user_habit_list is None:
+    if (user_habit_list := await get_user_habit_list(user)) is None:
         user_habit_list = await dummy_habit_list([])
         await user_storage.save_user_habit_list(user, user_habit_list)
 
