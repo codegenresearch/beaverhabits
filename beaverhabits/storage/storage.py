@@ -1,7 +1,13 @@
 import datetime
 from typing import List, Optional, Protocol
+from enum import Enum
 
 from beaverhabits.app.db import User
+
+
+class HabitStatus(Enum):
+    ACTIVE = "ACTIVE"
+    ARCHIVED = "ARCHIVED"
 
 
 class CheckedRecord(Protocol):
@@ -37,10 +43,10 @@ class Habit[R: CheckedRecord](Protocol):
     def star(self, value: bool) -> None: ...
 
     @property
-    def status(self) -> str: ...
+    def status(self) -> HabitStatus: ...
 
     @status.setter
-    def status(self, value: str) -> None: ...
+    def status(self, value: HabitStatus) -> None: ...
 
     @property
     def records(self) -> List[R]: ...
@@ -49,26 +55,16 @@ class Habit[R: CheckedRecord](Protocol):
     def ticked_days(self) -> list[datetime.date]:
         return [r.day for r in self.records if r.done]
 
-    async def tick(self, day: datetime.date, done: bool) -> R:
+    async def tick(self, day: datetime.date, done: bool) -> None:
         record = next((r for r in self.records if r.day == day), None)
         if record:
             record.done = done
-            return record
         else:
             new_record = {"day": day, "done": done}
             self.records.append(new_record)
-            return new_record
-
-    async def edit(self, name: Optional[str] = None, star: Optional[bool] = None, status: Optional[str] = None) -> None:
-        if name is not None:
-            self.name = name
-        if star is not None:
-            self.star = star
-        if status is not None:
-            self.status = status
 
     def __str__(self):
-        return f"{self.name} - Status: {self.status}"
+        return self.name
 
     __repr__ = __str__
 
@@ -84,8 +80,8 @@ class HabitList[H: Habit](Protocol):
     @order.setter
     def order(self, value: List[str]) -> None: ...
 
-    async def add(self, name: str, star: bool = False, status: str = "ACTIVE") -> H:
-        new_habit = {"name": name, "star": star, "status": status, "records": []}
+    async def add(self, name: str) -> H:
+        new_habit = {"name": name, "star": False, "status": HabitStatus.ACTIVE, "records": []}
         self.habits.append(new_habit)
         return new_habit
 
@@ -98,17 +94,6 @@ class HabitList[H: Habit](Protocol):
             if habit.id == habit_id:
                 return habit
         return None
-
-    async def merge(self, other: "HabitList") -> "HabitList":
-        result = set(self.habits).symmetric_difference(set(other.habits))
-
-        for self_habit in self.habits:
-            for other_habit in other.habits:
-                if self_habit == other_habit:
-                    new_habit = await self_habit.merge(other_habit)
-                    result.add(new_habit)
-
-        return HabitList({"habits": list(result)})
 
 
 class SessionStorage[L: HabitList](Protocol):
