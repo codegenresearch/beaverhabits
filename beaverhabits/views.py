@@ -8,12 +8,12 @@ from fastapi import HTTPException
 from nicegui import ui
 
 from beaverhabits.app.db import User
-from beaverhabits.storage import get_user_dict_storage, session_storage
+from beaverhabits.storage import get_user_storage, session_storage
 from beaverhabits.storage.dict import DAY_MASK, DictHabitList
 from beaverhabits.storage.storage import Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 
-user_storage = get_user_dict_storage()
+user_storage = get_user_storage()
 
 def dummy_habit_list(days: List[datetime.date]):
     pick = lambda: random.randint(0, 3) == 0
@@ -44,8 +44,7 @@ async def get_session_habit(habit_id: str) -> Habit:
     return habit
 
 def get_or_create_session_habit_list(days: List[datetime.date]) -> HabitList:
-    habit_list = get_session_habit_list()
-    if habit_list is not None:
+    if (habit_list := get_session_habit_list()) is not None:
         return habit_list
 
     habit_list = dummy_habit_list(days)
@@ -70,8 +69,7 @@ async def get_or_create_user_habit_list(
     user: User, 
     days: List[datetime.date]
 ) -> HabitList:
-    habit_list = await get_user_habit_list(user)
-    if habit_list is not None:
+    if (habit_list := await get_user_habit_list(user)) is not None:
         return habit_list
 
     habit_list = dummy_habit_list(days)
@@ -80,12 +78,12 @@ async def get_or_create_user_habit_list(
 
 async def export_user_habit_list(
     habit_list: HabitList, 
-    user_identify: str
+    user_identifier: str
 ) -> None:
     # Convert habit list to JSON format and download as a binary file
     if isinstance(habit_list, DictHabitList):
         data = {
-            "user_email": user_identify,
+            "user_email": user_identifier,
             "exported_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             **habit_list.data,
         }
