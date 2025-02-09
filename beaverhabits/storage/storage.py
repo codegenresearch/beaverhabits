@@ -1,12 +1,8 @@
 import datetime
-from typing import List, Optional, TypeVar, Protocol
+from typing import List, Optional, Protocol
 from pydantic import BaseModel, validator
 
 from beaverhabits.app.db import User
-
-R = TypeVar('R', bound='CheckedRecord')
-H = TypeVar('H', bound='Habit')
-L = TypeVar('L', bound='HabitList')
 
 class CheckedRecord(Protocol):
     @property
@@ -24,9 +20,9 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit(Protocol[R]):
+class Habit(Protocol):
     @property
-    def id(self) -> str | int: ...
+    def id(self) -> str: ...
 
     @property
     def name(self) -> str: ...
@@ -41,7 +37,7 @@ class Habit(Protocol[R]):
     def star(self, value: bool) -> None: ...
 
     @property
-    def records(self) -> List[R]: ...
+    def records(self) -> List['CheckedRecord']: ...
 
     @property
     def ticked_days(self) -> list[datetime.date]:
@@ -55,9 +51,9 @@ class Habit(Protocol[R]):
     __repr__ = __str__
 
 
-class HabitList(Protocol[H]):
+class HabitList(Protocol):
     @property
-    def habits(self) -> List[H]: ...
+    def habits(self) -> List['Habit']: ...
 
     @property
     def order(self) -> List[str]: ...
@@ -67,23 +63,23 @@ class HabitList(Protocol[H]):
 
     async def add(self, name: str) -> None: ...
 
-    async def remove(self, item: H) -> None: ...
+    async def remove(self, item: 'Habit') -> None: ...
 
-    async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
-
-
-class SessionStorage(Protocol[L]):
-    def get_user_habit_list(self) -> Optional[L]: ...
-
-    def save_user_habit_list(self, habit_list: L) -> None: ...
+    async def get_habit_by(self, habit_id: str) -> Optional['Habit']: ...
 
 
-class UserStorage(Protocol[L]):
-    async def get_user_habit_list(self, user: User) -> Optional[L]: ...
+class SessionStorage(Protocol):
+    def get_user_habit_list(self) -> Optional['HabitList']: ...
 
-    async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
+    def save_user_habit_list(self, habit_list: 'HabitList') -> None: ...
 
-    async def merge_user_habit_list(self, user: User, other: L) -> L: ...
+
+class UserStorage(Protocol):
+    async def get_user_habit_list(self, user: User) -> Optional['HabitList']: ...
+
+    async def save_user_habit_list(self, user: User, habit_list: 'HabitList') -> None: ...
+
+    async def merge_user_habit_list(self, user: User, other: 'HabitList') -> 'HabitList': ...
 
 
 class HabitAddCard(BaseModel):
