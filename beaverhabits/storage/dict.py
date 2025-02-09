@@ -63,24 +63,19 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = value
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
     async def tick(self, day: datetime.date, done: bool) -> None:
-        record = next((r for r in self.records if r.day == day), None)
-        if record:
+        if (record := next((r for r in self.records if r.day == day), None)) is not None:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
 
-    async def merge(self, other: "DictHabit") -> "DictHabit":
-        self_ticks = {r.day for r in self.records if r.done}
-        other_ticks = {r.day for r in other.records if r.done}
-        merged_ticks = sorted(list(self_ticks | other_ticks))
-        return DictHabit({
-            "name": self.name,
-            "records": [{"day": day.strftime(DAY_MASK), "done": True} for day in merged_ticks]
-        })
+    def __str__(self):
+        return self.name
+
+    __repr__ = __str__
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, DictHabit) and self.id == other.id
@@ -95,8 +90,17 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     """
 
     @property
-    def habits(self) -> List[DictHabit]:
-        return sorted([DictHabit(d) for d in self.data["habits"]], key=lambda x: x.star, reverse=True)
+    def habits(self) -> list[DictHabit]:
+        ordered_habits = sorted([DictHabit(d) for d in self.data["habits"]], key=lambda x: self.order.index(x.id) if x.id in self.order else float('inf'))
+        return ordered_habits
+
+    @property
+    def order(self) -> list[str]:
+        return self.data.get("order", [])
+
+    @order.setter
+    def order(self, value: list[str]) -> None:
+        self.data["order"] = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
         return next((habit for habit in self.habits if habit.id == habit_id), None)
@@ -104,14 +108,17 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     async def add(self, name: str) -> None:
         if not name.strip():
             raise ValueError("Habit name cannot be empty.")
-        self.data["habits"].append({
+        new_habit = {
             "name": name,
             "records": [],
             "id": generate_short_hash(name)
-        })
+        }
+        self.data["habits"].append(new_habit)
+        self.data["order"].append(new_habit["id"])
 
     async def remove(self, item: DictHabit) -> None:
-        self.data["habits"] = [h.data for h in self.habits if h != item]
+        self.data["habits"].remove(item.data)
+        self.data["order"].remove(item.id)
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
         result = set(self.habits).symmetric_difference(set(other.habits))
@@ -120,7 +127,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
                 if self_habit == other_habit:
                     new_habit = await self_habit.merge(other_habit)
                     result.add(new_habit)
-        return DictHabitList({"habits": [h.data for h in result]})
+        return DictHabitList({"habits": [h.data for h in result], "order": self.order + other.order})
 
 class HabitCreate(BaseModel):
     name: str
