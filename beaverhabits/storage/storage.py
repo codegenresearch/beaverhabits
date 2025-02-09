@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Optional, Protocol, TypeVar, Generic, Union
+from typing import List, Optional, Protocol, TypeVar
 from beaverhabits.app.db import User
 from beaverhabits.utils import generate_short_hash
 
@@ -23,9 +23,9 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit(Protocol, Generic[R]):
+class Habit(Protocol, H: CheckedRecord):
     @property
-    def id(self) -> Union[str, int]: ...
+    def id(self) -> str | int: ...
 
     @property
     def name(self) -> str: ...
@@ -40,10 +40,10 @@ class Habit(Protocol, Generic[R]):
     def star(self, value: bool) -> None: ...
 
     @property
-    def records(self) -> List[R]: ...
+    def records(self) -> list[H]: ...
 
     @property
-    def ticked_days(self) -> List[datetime.date]:
+    def ticked_days(self) -> list[datetime.date]:
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None: ...
@@ -54,27 +54,27 @@ class Habit(Protocol, Generic[R]):
     __repr__ = __str__
 
 
-class HabitList(Protocol, Generic[H]):
+class HabitList(Protocol, H: Habit):
     @property
-    def habits(self) -> List[H]: ...
+    def habits(self) -> list[H]: ...
 
     async def add(self, name: str) -> None: ...
 
     async def remove(self, item: H) -> None: ...
 
-    async def get_habit_by(self, habit_id: Union[str, int]) -> Optional[H]: ...
+    async def get_habit_by(self, habit_id: str | int) -> H | None: ...
 
     async def merge(self, other: 'HabitList[H]') -> 'HabitList[H]': ...
 
 
-class SessionStorage(Protocol, Generic[L]):
-    def get_user_habit_list(self) -> Optional[L]: ...
+class SessionStorage(Protocol, L: HabitList):
+    def get_user_habit_list(self) -> L | None: ...
 
     def save_user_habit_list(self, habit_list: L) -> None: ...
 
 
-class UserStorage(Protocol, Generic[L]):
-    async def get_user_habit_list(self, user: User) -> Optional[L]: ...
+class UserStorage(Protocol, L: HabitList):
+    async def get_user_habit_list(self, user: User) -> L | None: ...
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
 
@@ -99,8 +99,8 @@ class EnhancedCheckedRecord(CheckedRecord):
         self._done = value
 
 
-class EnhancedHabit(Habit[EnhancedCheckedRecord]):
-    def __init__(self, name: str, records: Optional[List[EnhancedCheckedRecord]] = None, star: bool = False):
+class EnhancedHabit(Habit, R: EnhancedCheckedRecord):
+    def __init__(self, name: str, records: list[R] | None = None, star: bool = False):
         self._id = generate_short_hash(name)
         self._name = name
         self._star = star
@@ -128,7 +128,7 @@ class EnhancedHabit(Habit[EnhancedCheckedRecord]):
         self._star = value
 
     @property
-    def records(self) -> List[EnhancedCheckedRecord]:
+    def records(self) -> list[R]:
         return self._records
 
     async def tick(self, day: datetime.date, done: bool) -> None:
@@ -138,13 +138,13 @@ class EnhancedHabit(Habit[EnhancedCheckedRecord]):
             self._records.append(EnhancedCheckedRecord(day, done))
 
 
-class EnhancedHabitList(HabitList[EnhancedHabit]):
-    def __init__(self, habits: Optional[List[EnhancedHabit]] = None, order: Optional[List[str]] = None):
+class EnhancedHabitList(HabitList, H: EnhancedHabit):
+    def __init__(self, habits: list[H] | None = None, order: list[str] | None = None):
         self._habits = habits if habits is not None else []
         self._order = order if order is not None else []
 
     @property
-    def habits(self) -> List[EnhancedHabit]:
+    def habits(self) -> list[H]:
         habits = self._habits.copy()
         if self._order:
             habits.sort(
@@ -159,21 +159,21 @@ class EnhancedHabitList(HabitList[EnhancedHabit]):
         return habits
 
     @property
-    def order(self) -> List[str]:
+    def order(self) -> list[str]:
         return self._order
 
     @order.setter
-    def order(self, value: List[str]) -> None:
+    def order(self, value: list[str]) -> None:
         self._order = value
 
     async def add(self, name: str) -> None:
         new_habit = EnhancedHabit(name)
         self._habits.append(new_habit)
 
-    async def remove(self, item: EnhancedHabit) -> None:
+    async def remove(self, item: H) -> None:
         self._habits.remove(item)
 
-    async def get_habit_by(self, habit_id: Union[str, int]) -> Optional[EnhancedHabit]:
+    async def get_habit_by(self, habit_id: str | int) -> H | None:
         for habit in self._habits:
             if habit.id == habit_id:
                 return habit
@@ -190,28 +190,28 @@ class EnhancedHabitList(HabitList[EnhancedHabit]):
         return EnhancedHabitList(list(result), self._order)
 
 
-class EnhancedSessionStorage(SessionStorage[EnhancedHabitList]):
+class EnhancedSessionStorage(SessionStorage, L: EnhancedHabitList):
     def __init__(self):
         self._user_habit_list = None
 
-    def get_user_habit_list(self) -> Optional[EnhancedHabitList]:
+    def get_user_habit_list(self) -> L | None:
         return self._user_habit_list
 
-    def save_user_habit_list(self, habit_list: EnhancedHabitList) -> None:
+    def save_user_habit_list(self, habit_list: L) -> None:
         self._user_habit_list = habit_list
 
 
-class EnhancedUserStorage(UserStorage[EnhancedHabitList]):
+class EnhancedUserStorage(UserStorage, L: EnhancedHabitList):
     def __init__(self):
         self._user_habit_lists = {}
 
-    async def get_user_habit_list(self, user: User) -> Optional[EnhancedHabitList]:
+    async def get_user_habit_list(self, user: User) -> L | None:
         return self._user_habit_lists.get(user.id)
 
-    async def save_user_habit_list(self, user: User, habit_list: EnhancedHabitList) -> None:
+    async def save_user_habit_list(self, user: User, habit_list: L) -> None:
         self._user_habit_lists[user.id] = habit_list
 
-    async def merge_user_habit_list(self, user: User, other: EnhancedHabitList) -> EnhancedHabitList:
+    async def merge_user_habit_list(self, user: User, other: L) -> L:
         current_list = await self.get_user_habit_list(user)
         if current_list:
             return await current_list.merge(other)
