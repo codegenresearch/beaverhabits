@@ -70,7 +70,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         self.data["star"] = value
 
     @property
@@ -127,7 +127,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
             if HabitStatus(d.get("status", HabitStatus.ACTIVE.value)) != HabitStatus.SOLF_DELETED
         ]
 
-        # Sort by order and status
+        # Sort by order and then by status
         if self.order:
             habits.sort(
                 key=lambda x: (
