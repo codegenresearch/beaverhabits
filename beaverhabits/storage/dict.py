@@ -84,11 +84,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: bool) -> None:
+    def star(self, value: int) -> None:
         """
         Sets the star status of the habit.
         """
-        self.data["star"] = value
+        self.data["star"] = bool(value)
 
     @property
     def records(self) -> list[DictRecord]:
@@ -115,8 +115,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Updates the completion status of a record for a specific day.
         """
-        record = next((r for r in self.records if r.day == day), None)
-        if record:
+        if (record := next((r for r in self.records if r.day == day), None)) is not None:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
