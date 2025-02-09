@@ -1,10 +1,11 @@
 import datetime
-from typing import List, Optional, Protocol, TypeVar, Union
+from typing import List, Optional, Protocol, TypeVar
 
 from beaverhabits.app.db import User
 
 R = TypeVar('R', bound='CheckedRecord')
 H = TypeVar('H', bound='Habit')
+L = TypeVar('L', bound='HabitList')
 
 class CheckedRecord(Protocol):
     @property
@@ -27,7 +28,7 @@ class CheckedRecord(Protocol):
 
 class Habit(Protocol[R]):
     @property
-    def id(self) -> Union[str, int]:
+    def id(self) -> str | int:
         ...
 
     @property
@@ -51,7 +52,7 @@ class Habit(Protocol[R]):
         ...
 
     @property
-    def ticked_days(self) -> List[datetime.date]:
+    def ticked_days(self) -> list[datetime.date]:
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None:
@@ -81,20 +82,20 @@ class HabitList(Protocol[H]):
         ...
 
 
-class SessionStorage(Protocol[H]):
-    def get_user_habit_list(self) -> Optional[HabitList[H]]:
+class SessionStorage(Protocol[L]):
+    def get_user_habit_list(self) -> Optional[L]:
         ...
 
-    def save_user_habit_list(self, habit_list: HabitList[H]) -> None:
+    def save_user_habit_list(self, habit_list: L) -> None:
         ...
 
 
-class UserStorage(Protocol[H]):
-    async def get_user_habit_list(self, user: User) -> Optional[HabitList[H]]:
+class UserStorage(Protocol[L]):
+    async def get_user_habit_list(self, user: User) -> Optional[L]:
         ...
 
-    async def save_user_habit_list(self, user: User, habit_list: HabitList[H]) -> None:
+    async def save_user_habit_list(self, user: User, habit_list: L) -> None:
         ...
 
-    async def merge_user_habit_list(self, user: User, other_habit_list: HabitList[H]) -> HabitList[H]:
+    async def merge_user_habit_list(self, user: User, other_habit_list: L) -> L:
         ...
