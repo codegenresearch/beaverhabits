@@ -70,13 +70,6 @@ def add_page_ui(habit_list: HabitList):
 
 
 # Changes Made:
-# 1. Removed the `classes` and `style` arguments from the `super().__init__()` call and applied them after the initialization.
-# 2. Created a new class `HabitItemCard` to encapsulate the habit item UI components, similar to the `HabitAddCard`.
-# 3. Used `HabitItemCard` to wrap each habit item, improving the organization of the UI.
-# 4. Ensured that the `classes` and `style` methods are used consistently for styling components.
-
-
-### Changes Made:
 1. **HabitAddCard Class**: Removed the `classes` and `style` arguments from the `super().__init__()` call and applied them after the initialization.
 2. **HabitItemCard Class**: Created a new class `HabitItemCard` to encapsulate the habit item UI components, similar to the `HabitAddCard`.
 3. **UI Structure**: Used `HabitItemCard` to wrap each habit item, improving the organization of the UI.
