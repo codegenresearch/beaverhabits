@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Optional, Protocol, TypeVar
+from typing import List, Optional, Protocol, TypeVar, Union
 from beaverhabits.app.db import User
 import logging
 
@@ -34,9 +34,9 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit(Protocol):
+class Habit(Protocol[R]):
     @property
-    def id(self) -> str:
+    def id(self) -> Union[str, int]:
         """Get the unique identifier of the habit."""
         ...
 
@@ -74,19 +74,6 @@ class Habit(Protocol):
         """Mark the habit as done or not done for a specific day."""
         ...
 
-    async def merge(self, other: 'Habit') -> 'Habit':
-        """Merge the records of two habits."""
-        try:
-            self_ticks = {r.day for r in self.records if r.done}
-            other_ticks = {r.day for r in other.records if r.done}
-            merged_ticks = sorted(list(self_ticks | other_ticks))
-
-            new_records = [{"day": day.strftime("%Y-%m-%d"), "done": True} for day in merged_ticks]
-            return type(self)(id=self.id, name=self.name, records=new_records, star=self.star)
-        except Exception as e:
-            logger.error(f"Error merging habits: {e}")
-            raise
-
     def __str__(self) -> str:
         """String representation of the habit."""
         return self.name
@@ -94,7 +81,7 @@ class Habit(Protocol):
     __repr__ = __str__
 
 
-class HabitList(Protocol):
+class HabitList(Protocol[H]):
     @property
     def habits(self) -> List[H]:
         """Get the list of habits."""
@@ -108,7 +95,7 @@ class HabitList(Protocol):
         """Remove a habit from the list."""
         ...
 
-    async def get_habit_by(self, habit_id: str) -> Optional[H]:
+    async def get_habit_by(self, habit_id: Union[str, int]) -> Optional[H]:
         """Get a habit by its ID."""
         ...
 
@@ -129,7 +116,7 @@ class HabitList(Protocol):
             raise
 
 
-class SessionStorage(Protocol):
+class SessionStorage(Protocol[L]):
     def get_user_habit_list(self) -> Optional[L]:
         """Get the habit list for the current session."""
         ...
@@ -139,7 +126,7 @@ class SessionStorage(Protocol):
         ...
 
 
-class UserStorage(Protocol):
+class UserStorage(Protocol[L]):
     async def get_user_habit_list(self, user: User) -> Optional[L]:
         """Get the habit list for a specific user."""
         ...
