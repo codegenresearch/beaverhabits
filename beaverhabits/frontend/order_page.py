@@ -24,10 +24,11 @@ async def item_drop(e, habit_list: HabitList):
     habits = [
         x.habit
         for x in dragged.parent_slot.children
-        if isinstance(x, components.HabitOrderCard) and x.habit and not x.habit.is_deleted
+        if isinstance(x, components.HabitOrderCard)
     ]
     habit_list.order = [str(x.id) for x in habits]
     logger.info(f"Dropped habit '{dragged.habit.name}' to index {e.args['new_index']}")
+    logger.info(f"New order: {[habit.name for habit in habits]}")
 
     # Manage habit status based on new position
     new_index = e.args["new_index"]
@@ -47,32 +48,30 @@ async def item_drop(e, habit_list: HabitList):
 def add_ui(habit_list: HabitList):
     with ui.column().classes("sortable gap-3"):
         for item in habit_list.habits:
-            if not item.is_deleted:
-                with components.HabitOrderCard(item):
-                    with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
-                        name = HabitNameInput(item)
-                        name.classes("col-span-6 break-all")
-                        name.props("borderless")
+            with components.HabitOrderCard(item):
+                with ui.grid(columns=8, rows=1).classes("w-full gap-0 items-center"):
+                    name = HabitNameInput(item)
+                    name.classes("col-span-6 break-all")
 
-                        ui.space().classes("col-span-4")
+                    star = HabitStarCheckbox(item, add_ui.refresh)
+                    star.props("flat fab-mini color=grey")
+                    star.classes("col-span-1")
 
-                        star = HabitStarCheckbox(item, add_ui.refresh)
-                        star.classes("col-span-1")
-
-                        delete = HabitDeleteButton(item, habit_list, add_ui.refresh)
-                        delete.classes("col-span-1")
+                    delete = HabitDeleteButton(item, habit_list, add_ui.refresh)
+                    delete.props("flat fab-mini color=grey")
+                    delete.classes("col-span-1")
 
 
 def order_page_ui(habit_list: HabitList):
     with layout():
         with ui.column().classes("w-full pl-1 items-center gap-3"):
-            add_ui(habit_list)
+            with ui.column().classes("sortable gap-3"):
+                add_ui(habit_list)
 
             with components.HabitOrderCard():
-                with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
+                with ui.grid(columns=9, rows=1).classes("w-full gap-0 items-center"):
                     add = HabitAddButton(habit_list, add_ui.refresh)
-                    add.classes("col-span-12")
-                    add.props("borderless")
+                    add.classes("col-span-7")
 
     ui.add_body_html(
         r"""
