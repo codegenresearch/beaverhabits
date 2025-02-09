@@ -1,6 +1,5 @@
 import datetime
 import json
-import logging
 import random
 import time
 from typing import List, Optional
@@ -9,19 +8,19 @@ from fastapi import HTTPException
 from nicegui import ui
 
 from beaverhabits.app.db import User
-from beaverhabits.storage import get_user_storage, session_storage
+from beaverhabits.storage import session_storage
 from beaverhabits.storage.dict import DAY_MASK, DictHabitList
 from beaverhabits.storage.storage import Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 
-logger = logging.getLogger(__name__)
+# Assuming get_user_storage is defined in beaverhabits/storage/__init__.py
+# If not, ensure it is correctly defined and exported there.
+from beaverhabits.storage import get_user_storage
 
 user_storage = get_user_storage()
 
 def dummy_habit_list(days: List[datetime.date]) -> DictHabitList:
-    def pick() -> bool:
-        return random.randint(0, 3) == 0
-
+    pick = lambda: random.randint(0, 3) == 0
     items = [
         {
             "id": generate_short_hash(name),
@@ -40,12 +39,10 @@ def get_session_habit_list() -> Optional[HabitList]:
 async def get_session_habit(habit_id: str) -> Habit:
     habit_list = get_session_habit_list()
     if habit_list is None:
-        logger.error("Habit list not found for session")
         raise HTTPException(status_code=404, detail="Habit list not found")
 
     habit = await habit_list.get_habit_by(habit_id)
     if habit is None:
-        logger.error(f"Habit with ID {habit_id} not found in session")
         raise HTTPException(status_code=404, detail="Habit not found")
 
     return habit
@@ -64,12 +61,10 @@ async def get_user_habit_list(user: User) -> Optional[HabitList]:
 async def get_user_habit(user: User, habit_id: str) -> Habit:
     habit_list = await get_user_habit_list(user)
     if habit_list is None:
-        logger.error(f"Habit list not found for user {user.id}")
         raise HTTPException(status_code=404, detail="Habit list not found")
 
     habit = await habit_list.get_habit_by(habit_id)
     if habit is None:
-        logger.error(f"Habit with ID {habit_id} not found for user {user.id}")
         raise HTTPException(status_code=404, detail="Habit not found")
 
     return habit
@@ -86,28 +81,23 @@ async def get_or_create_user_habit_list(user: User, days: List[datetime.date]) -
 async def merge_user_habit_lists(user: User, other_habit_list: HabitList) -> HabitList:
     try:
         merged_habit_list = await user_storage.merge_user_habit_list(user, other_habit_list)
-        logger.info(f"Successfully merged habit lists for user {user.id}")
         return merged_habit_list
     except Exception as e:
-        logger.error(f"Failed to merge habit lists for user {user.id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to merge habit lists")
 
-async def export_user_habit_list(habit_list: HabitList, user_identifier: str) -> None:
+async def export_user_habit_list(habit_list: HabitList, user_identify: str) -> None:
     if not isinstance(habit_list, DictHabitList):
-        logger.error("Export failed: habit list is not of type DictHabitList")
         ui.notification("Export failed, please try again later.")
         return
 
     try:
         data = {
-            "user_email": user_identifier,
+            "user_email": user_identify,
             "exported_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             **habit_list.data,
         }
         binary_data = json.dumps(data).encode()
         file_name = f"habits_{int(float(time.time()))}.json"
         ui.download(binary_data, file_name)
-        logger.info(f"Successfully exported habit list for user {user_identifier}")
     except Exception as e:
-        logger.error(f"Export failed for user {user_identifier}: {e}")
         ui.notification("Export failed, please try again later.")
