@@ -26,7 +26,17 @@ async def item_drop(e, habit_list: HabitList):
         if isinstance(x, components.HabitOrderCard) and x.habit and not x.habit.is_deleted
     ]
     habit_list.order = [str(x.id) for x in habits]
+    logger.info(f"Item {dragged.habit.name} moved to index {e.args['new_index']}")
     logger.info(f"New order: {habits}")
+
+    # Manage habit status based on new position
+    for index, habit in enumerate(habits):
+        if index < len(habits) // 2:
+            habit.is_archived = False
+        else:
+            habit.is_archived = True
+
+    add_ui.refresh()
 
 
 @ui.refreshable
@@ -36,11 +46,14 @@ def add_ui(habit_list: HabitList):
             if not item.is_deleted:
                 with components.HabitOrderCard(item):
                     with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
-                        name = HabitNameInput(item)
-                        name.classes("col-span-3")
-                        name.props("borderless")
+                        if not item.is_archived:
+                            name = HabitNameInput(item)
+                            name.classes("col-span-6 break-all")
+                            name.props("borderless")
+                        else:
+                            ui.label(item.name).classes("col-span-6 break-all text-gray-500")
 
-                        ui.space().classes("col-span-7")
+                        ui.space().classes("col-span-4")
 
                         star = HabitStarCheckbox(item, add_ui.refresh)
                         star.classes("col-span-1")
