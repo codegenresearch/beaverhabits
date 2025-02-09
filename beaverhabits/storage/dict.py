@@ -86,11 +86,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: bool) -> None:
+    def star(self, value: int) -> None:
         """
         Sets the star status of the habit.
         """
-        self.data["star"] = value
+        self.data["star"] = bool(value)
 
     @property
     def records(self) -> list[DictRecord]:
@@ -114,10 +114,10 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         self_ticks = {r.day for r in self.records if r.done}
         other_ticks = {r.day for r in other.records if r.done}
-        merged_ticks = self_ticks | other_ticks
+        merged_ticks = sorted(self_ticks | other_ticks)
 
         merged_records = [
-            {"day": day.strftime(DAY_MASK), "done": True} for day in sorted(merged_ticks)
+            {"day": day.strftime(DAY_MASK), "done": True} for day in merged_ticks
         ]
         return DictHabit({"name": self.name, "records": merged_records, "id": self.id, "star": self.star})
 
@@ -180,6 +180,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
         """
