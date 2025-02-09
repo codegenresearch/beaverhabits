@@ -1,10 +1,8 @@
 import datetime
 from typing import List, Optional, Protocol
-import logging
 
 from beaverhabits.app.db import User
 
-logging.basicConfig(level=logging.DEBUG)
 
 class CheckedRecord(Protocol):
     @property
@@ -36,7 +34,7 @@ class Habit[R: CheckedRecord](Protocol):
     def star(self) -> bool: ...
 
     @star.setter
-    def star(self, value: int) -> None: ...
+    def star(self, value: bool) -> None: ...
 
     @property
     def records(self) -> List[R]: ...
@@ -79,3 +77,5 @@ class UserStorage[L: HabitList](Protocol):
     async def get_user_habit_list(self, user: User) -> Optional[L]: ...
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
+
+    async def merge_user_habit_list(self, user: User, other_habit_list: L) -> None: ...
