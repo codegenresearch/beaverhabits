@@ -1,7 +1,10 @@
 import datetime
-from typing import List, Optional, Protocol
+from typing import List, Optional, Protocol, TypeVar
 
 from beaverhabits.app.db import User
+
+R = TypeVar('R', bound='CheckedRecord')
+H = TypeVar('H', bound='Habit')
 
 class CheckedRecord(Protocol):
     @property
@@ -27,8 +30,6 @@ class CheckedRecord(Protocol):
 
 
 class Habit(Protocol):
-    R: CheckedRecord
-
     @property
     def id(self) -> str:
         """Get the unique identifier of the habit."""
@@ -50,17 +51,17 @@ class Habit(Protocol):
         ...
 
     @star.setter
-    def star(self, value: bool) -> None:
+    def star(self, value: int) -> None:
         """Set the star status of the habit."""
         ...
 
     @property
-    def records(self) -> list[R]:
+    def records(self) -> List[R]:
         """Get the list of records for the habit."""
         ...
 
     @property
-    def ticked_days(self) -> list[datetime.date]:
+    def ticked_days(self) -> List[datetime.date]:
         """Get the list of days the habit was marked as done."""
         return [r.day for r in self.records if r.done]
 
@@ -76,10 +77,8 @@ class Habit(Protocol):
 
 
 class HabitList(Protocol):
-    H: Habit
-
     @property
-    def habits(self) -> list[H]:
+    def habits(self) -> List[H]:
         """Get the list of habits."""
         ...
 
@@ -101,28 +100,24 @@ class HabitList(Protocol):
 
 
 class SessionStorage(Protocol):
-    L: HabitList
-
-    def get_user_habit_list(self) -> Optional[L]:
+    def get_user_habit_list(self) -> Optional[HabitList]:
         """Get the habit list for the current session."""
         ...
 
-    def save_user_habit_list(self, habit_list: L) -> None:
+    def save_user_habit_list(self, habit_list: HabitList) -> None:
         """Save the habit list for the current session."""
         ...
 
 
 class UserStorage(Protocol):
-    L: HabitList
-
-    async def get_user_habit_list(self, user: User) -> Optional[L]:
+    async def get_user_habit_list(self, user: User) -> Optional[HabitList]:
         """Get the habit list for a specific user."""
         ...
 
-    async def save_user_habit_list(self, user: User, habit_list: L) -> None:
+    async def save_user_habit_list(self, user: User, habit_list: HabitList) -> None:
         """Save the habit list for a specific user."""
         ...
 
-    async def merge_user_habit_list(self, user: User, other_habit_list: L) -> None:
+    async def merge_user_habit_list(self, user: User, other_habit_list: HabitList) -> None:
         """Merge another habit list with the user's habit list."""
         ...
