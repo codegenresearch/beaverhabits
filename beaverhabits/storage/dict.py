@@ -3,19 +3,9 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
-from pydantic import BaseModel, validator
 
 DAY_MASK = "%Y-%m-%d"
 MONTH_MASK = "%Y/%m"
-
-class HabitNameValidator(BaseModel):
-    name: str
-
-    @validator('name')
-    def name_must_be_alphanumeric(cls, v):
-        if not v.isalnum():
-            raise ValueError('Habit name must be alphanumeric')
-        return v
 
 @dataclass(init=False)
 class DictStorage:
@@ -69,7 +59,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @name.setter
     def name(self, value: str) -> None:
-        HabitNameValidator(name=value)
         self.data["name"] = value
 
     @property
@@ -77,8 +66,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: bool) -> None:
-        self.data["star"] = value
+    def star(self, value: int) -> None:
+        self.data["star"] = bool(value)
 
     @property
     def records(self) -> list[DictRecord]:
@@ -110,23 +99,18 @@ class DictHabit(Habit[DictRecord], DictStorage):
     def __hash__(self) -> int:
         return hash(self.id)
 
+    def __str__(self):
+        return self.name
+
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
-    order: List[str] = field(default_factory=list)
 
     @property
     def habits(self) -> list[DictHabit]:
         habits = [DictHabit(d) for d in self.data["habits"]]
-        habits.sort(key=lambda x: (x.id not in self.order, self.order.index(x.id) if x.id in self.order else float('inf'), x.star), reverse=True)
+        order = self.data.get("order", [])
+        habits.sort(key=lambda x: (x.id not in order, order.index(x.id) if x.id in order else float('inf'), x.star), reverse=True)
         return habits
-
-    @property
-    def order(self) -> List[str]:
-        return self._order
-
-    @order.setter
-    def order(self, value: List[str]) -> None:
-        self._order = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
         for habit in self.habits:
@@ -134,14 +118,16 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
                 return habit
 
     async def add(self, name: str) -> None:
-        HabitNameValidator(name=name)
         d = {"name": name, "records": [], "id": generate_short_hash(name)}
         self.data["habits"].append(d)
-        self.order.append(d["id"])
+        if "order" not in self.data:
+            self.data["order"] = []
+        self.data["order"].append(d["id"])
 
     async def remove(self, item: DictHabit) -> None:
         self.data["habits"].remove(item.data)
-        self.order.remove(item.id)
+        if "order" in self.data:
+            self.data["order"].remove(item.id)
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
         result = set(self.habits).symmetric_difference(set(other.habits))
@@ -153,4 +139,4 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
                     new_habit = await self_habit.merge(other_habit)
                     result.add(new_habit)
 
-        return DictHabitList({"habits": [h.data for h in result], "order": self.order})
+        return DictHabitList({"habits": [h.data for h in result]})
