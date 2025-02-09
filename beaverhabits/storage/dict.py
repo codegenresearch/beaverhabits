@@ -94,9 +94,9 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Marks the habit as done or not done for a specific day.
         """
-        record = next((r for r in self.records if r.day == day), None)
-        if record:
-            record.done = done
+        record_data = next((r for r in self.data["records"] if datetime.datetime.strptime(r["day"], DAY_MASK).date() == day), None)
+        if record_data:
+            record_data["done"] = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
 
@@ -118,10 +118,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Merges another habit's records into this habit.
         """
-        existing_days = {record.day for record in self.records}
-        for record in other.records:
-            if record.day not in existing_days:
-                self.data["records"].append(record.data)
+        existing_days = {datetime.datetime.strptime(r["day"], DAY_MASK).date() for r in self.data["records"]}
+        for record in other.data["records"]:
+            record_day = datetime.datetime.strptime(record["day"], DAY_MASK).date()
+            if record_day not in existing_days:
+                self.data["records"].append(record)
         return self
 
 @dataclass
@@ -145,6 +146,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
         """
@@ -156,7 +158,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         """
         Removes a habit from the list.
         """
-        self.data["habits"].remove(item.data)
+        self.data["habits"] = [h.data for h in self.habits if h.id != item.id]
 
     async def merge(self, other: 'DictHabitList') -> 'DictHabitList':
         """
