@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, list
 
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
@@ -91,7 +91,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = value
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         """
         Returns the list of records for the habit.
         """
@@ -101,8 +101,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Marks the habit as done or not done for a specific day.
         """
-        record = next((r for r in self.records if r.day == day), None)
-        if record:
+        if (record := next((r for r in self.records if r.day == day), None)) is not None:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
@@ -126,9 +125,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         Merges another habit's records into this habit.
         """
         existing_days = {r.day for r in self.records}
-        for record in other.records:
-            if record.day not in existing_days:
-                self.data["records"].append({"day": record.day.strftime(DAY_MASK), "done": record.done})
+        new_records = [
+            {"day": record.day.strftime(DAY_MASK), "done": record.done}
+            for record in other.records if record.day not in existing_days
+        ]
+        self.data["records"].extend(new_records)
         return self
 
 @dataclass
@@ -137,7 +138,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     Represents a list of habits.
     """
     @property
-    def habits(self) -> List[DictHabit]:
+    def habits(self) -> list[DictHabit]:
         """
         Returns the list of habits, sorted by star status.
         """
@@ -149,10 +150,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         """
         Retrieves a habit by its ID.
         """
-        for habit in self.habits:
-            if habit.id == habit_id:
-                return habit
-        return None
+        return next((habit for habit in self.habits if habit.id == habit_id), None)
 
     async def add(self, name: str) -> None:
         """
