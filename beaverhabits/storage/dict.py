@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, list
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 
@@ -66,11 +66,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: bool) -> None:
-        self.data["star"] = value
+    def star(self, value: int) -> None:
+        self.data["star"] = bool(value)
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
     async def tick(self, day: datetime.date, done: bool) -> None:
@@ -100,7 +100,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return hash(self.id)
 
     def __str__(self) -> str:
-        return f"{self.name}<{self.id}>"
+        return self.name
 
     __repr__ = __str__
 
@@ -108,20 +108,20 @@ class DictHabit(Habit[DictRecord], DictStorage):
 class DictHabitList(HabitList[DictHabit], DictStorage):
 
     @property
-    def habits(self) -> List[DictHabit]:
+    def habits(self) -> list[DictHabit]:
         habits = [DictHabit(d) for d in self.data["habits"]]
-        if "order" in self.data:
-            habits.sort(key=lambda x: self.data["order"].index(x.id) if x.id in self.data["order"] else float('inf'))
+        if self.order:
+            habits.sort(key=lambda x: self.order.index(x.id) if x.id in self.order else float('inf'))
         else:
             habits.sort(key=lambda x: x.star, reverse=True)
         return habits
 
     @property
-    def order(self) -> List[str]:
+    def order(self) -> list[str]:
         return self.data.get("order", [])
 
     @order.setter
-    def order(self, value: List[str]) -> None:
+    def order(self, value: list[str]) -> None:
         self.data["order"] = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
@@ -136,8 +136,8 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 
     async def remove(self, item: DictHabit) -> None:
         self.data["habits"].remove(item.data)
-        if "order" in self.data:
-            self.data["order"].remove(item.id)
+        if self.order:
+            self.order.remove(item.id)
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
         result = set(self.habits).symmetric_difference(set(other.habits))
