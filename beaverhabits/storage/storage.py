@@ -5,6 +5,10 @@ from pydantic import BaseModel, validator
 H = TypeVar('H', bound='Habit')
 R = TypeVar('R', bound='CheckedRecord')
 
+class User(BaseModel):
+    id: int
+    username: str
+
 class CheckedRecord(Protocol):
     @property
     def day(self) -> datetime.date: ...
@@ -56,6 +60,12 @@ class HabitList(Protocol):
 
     @property
     def habits(self) -> List[H]: ...
+
+    @property
+    def order(self) -> List[str]: ...
+
+    @order.setter
+    def order(self, value: List[str]) -> None: ...
 
     async def add(self, name: str) -> None: ...
 
