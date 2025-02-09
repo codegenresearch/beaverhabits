@@ -24,20 +24,15 @@ async def item_drop(e, habit_list: HabitList):
     habits = [
         x.habit
         for x in dragged.parent_slot.children
-        if isinstance(x, components.HabitOrderCard)
+        if isinstance(x, components.HabitOrderCard) and x.habit
     ]
     habit_list.order = [str(x.id) for x in habits]
     logger.info(f"Dropped habit '{dragged.habit.name}' to index {e.args['new_index']}")
-    logger.info(f"New order: {[habit.name for habit in habits]}")
 
     # Manage habit status based on new position
     new_index = e.args["new_index"]
-    if new_index > 0:
-        previous_habit = habits[new_index - 1]
-        if previous_habit.status == HabitStatus.ARCHIVED:
-            dragged.habit.status = HabitStatus.ARCHIVED
-        else:
-            dragged.habit.status = HabitStatus.ACTIVE
+    if new_index > 0 and habits[new_index - 1].status == HabitStatus.ARCHIVED:
+        dragged.habit.status = HabitStatus.ARCHIVED
     else:
         dragged.habit.status = HabitStatus.ACTIVE
 
@@ -52,6 +47,9 @@ def add_ui(habit_list: HabitList):
                 with ui.grid(columns=8, rows=1).classes("w-full gap-0 items-center"):
                     name = HabitNameInput(item)
                     name.classes("col-span-6 break-all")
+                    name.props("borderless")
+
+                    ui.space().classes("col-span-1")
 
                     star = HabitStarCheckbox(item, add_ui.refresh)
                     star.props("flat fab-mini color=grey")
@@ -72,6 +70,7 @@ def order_page_ui(habit_list: HabitList):
                 with ui.grid(columns=9, rows=1).classes("w-full gap-0 items-center"):
                     add = HabitAddButton(habit_list, add_ui.refresh)
                     add.classes("col-span-7")
+                    add.props("borderless")
 
     ui.add_body_html(
         r"""
