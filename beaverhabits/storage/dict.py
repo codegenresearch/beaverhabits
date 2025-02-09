@@ -93,7 +93,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = bool(value)
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         """
         Returns the list of records associated with the habit.
         """
@@ -103,7 +103,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Updates the completion status of a record for a specific day.
         """
-        if (record := next((r for r in self.records if r.day == day), None)) is not None:
+        record = next((r for r in self.records if r.day == day), None)
+        if record:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
@@ -119,7 +120,12 @@ class DictHabit(Habit[DictRecord], DictStorage):
         merged_records = [
             {"day": day.strftime(DAY_MASK), "done": True} for day in merged_ticks
         ]
-        return DictHabit({"name": self.name, "records": merged_records, "id": self.id, "star": self.star})
+        return DictHabit({
+            "name": self.name,
+            "records": merged_records,
+            "id": self.id,
+            "star": self.star
+        })
 
     def __str__(self):
         """
@@ -148,7 +154,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     """
 
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         """
         Returns the list of habits sorted by order and star status.
         """
@@ -160,14 +166,14 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return ordered_habits
 
     @property
-    def order(self) -> list[str]:
+    def order(self) -> List[str]:
         """
         Returns the order of habits.
         """
         return self.data.get("order", [])
 
     @order.setter
-    def order(self, value: list[str]) -> None:
+    def order(self, value: List[str]) -> None:
         """
         Sets the order of habits.
         """
@@ -180,7 +186,6 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
-        return None
 
     async def add(self, name: str) -> None:
         """
@@ -214,7 +219,10 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
                 if self_habit == other_habit:
                     new_habit = await self_habit.merge(other_habit)
                     result.add(new_habit)
-        return DictHabitList({"habits": [h.data for h in result], "order": self.order + other.order})
+        return DictHabitList({
+            "habits": [h.data for h in result],
+            "order": self.order + other.order
+        })
 
 class HabitCreate(BaseModel):
     """
