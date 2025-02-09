@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
@@ -79,6 +79,13 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
+    @id.setter
+    def id(self, value: str) -> None:
+        """
+        Sets the unique identifier for the habit.
+        """
+        self.data["id"] = value
+
     @property
     def name(self) -> str:
         """
@@ -108,7 +115,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = value
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         """
         Returns a list of records associated with the habit.
         """
@@ -118,6 +125,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Checks if two habits are equal based on their IDs.
         """
+        if not isinstance(other, DictHabit):
+            return NotImplemented
         return self.id == other.id
 
     def __hash__(self) -> int:
@@ -140,13 +149,13 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Merges another habit into this one, combining records and updating star status.
         """
-        records_dict = {r.day: r for r in self.records}
+        records_set = {r.day: r for r in self.records}
         for record in other.records:
-            if record.day not in records_dict:
-                records_dict[record.day] = record
+            if record.day not in records_set:
+                records_set[record.day] = record
             else:
-                records_dict[record.day].done = records_dict[record.day].done or record.done
-        self.data["records"] = [r.data for r in records_dict.values()]
+                records_set[record.day].done = records_set[record.day].done or record.done
+        self.data["records"] = [r.data for r in records_set.values()]
         self.star = self.star or other.star
         return self
 
@@ -165,7 +174,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     """
 
     @property
-    def habits(self) -> List[DictHabit]:
+    def habits(self) -> list[DictHabit]:
         """
         Returns a sorted list of habits, prioritizing starred habits.
         """
@@ -194,3 +203,16 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         Removes a habit from the list based on its ID.
         """
         self.data["habits"] = [h.data for h in self.habits if h.id != item.id]
+
+    def merge(self, other: 'DictHabitList') -> 'DictHabitList':
+        """
+        Merges another habit list into this one, combining habits and their records.
+        """
+        habits_dict = {habit.id: habit for habit in self.habits}
+        for habit in other.habits:
+            if habit.id not in habits_dict:
+                habits_dict[habit.id] = habit
+            else:
+                habits_dict[habit.id].merge(habit)
+        self.data["habits"] = [h.data for h in habits_dict.values()]
+        return self
