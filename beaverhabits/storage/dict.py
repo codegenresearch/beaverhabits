@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, list
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 from pydantic import BaseModel, validator
@@ -93,7 +93,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = bool(value)
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         """
         Returns the list of records associated with the habit.
         """
@@ -103,8 +103,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         Updates the completion status of a record for a specific day.
         """
-        record = next((r for r in self.records if r.day == day), None)
-        if record:
+        if (record := next((r for r in self.records if r.day == day), None)):
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
@@ -154,7 +153,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     """
 
     @property
-    def habits(self) -> List[DictHabit]:
+    def habits(self) -> list[DictHabit]:
         """
         Returns the list of habits sorted by order and star status.
         """
@@ -166,14 +165,14 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return ordered_habits
 
     @property
-    def order(self) -> List[str]:
+    def order(self) -> list[str]:
         """
         Returns the order of habits.
         """
         return self.data.get("order", [])
 
     @order.setter
-    def order(self, value: List[str]) -> None:
+    def order(self, value: list[str]) -> None:
         """
         Sets the order of habits.
         """
