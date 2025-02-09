@@ -2,8 +2,8 @@ import datetime
 from typing import List, Optional, Protocol, TypeVar
 from pydantic import BaseModel, validator
 
-H = TypeVar('H', bound='Habit')
 R = TypeVar('R', bound='CheckedRecord')
+H = TypeVar('H', bound='Habit')
 
 class User(BaseModel):
     id: int
@@ -25,7 +25,7 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit(Protocol):
+class Habit(Protocol[R]):
     @property
     def id(self) -> str | int: ...
 
@@ -56,8 +56,7 @@ class Habit(Protocol):
     __repr__ = __str__
 
 
-class HabitList(Protocol):
-
+class HabitList(Protocol[H]):
     @property
     def habits(self) -> List[H]: ...
 
