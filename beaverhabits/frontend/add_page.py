@@ -1,10 +1,5 @@
 from nicegui import ui
-from beaverhabits.frontend.components import (
-    HabitAddButton,
-    HabitDeleteButton,
-    HabitNameInput,
-    HabitStarCheckbox,
-)
+from beaverhabits.frontend.components import HabitAddButton, HabitDeleteButton, HabitNameInput, HabitStarCheckbox
 from beaverhabits.frontend.layout import layout
 from beaverhabits.storage.storage import HabitList
 import logging
@@ -19,39 +14,23 @@ def validate_habit_name(name: str) -> bool:
     # Simple validation: name should not be empty and should not exceed 50 characters
     return 0 < len(name) <= 50
 
-class HabitAddCard:
-    def __init__(self, item, habit_list, refresh_callback):
-        self.item = item
-        self.habit_list = habit_list
-        self.refresh_callback = refresh_callback
-
-    def render(self):
-        with ui.row().classes(grid_classes):
-            name_input = HabitNameInput(self.item)
-            name_input.classes("col-span-7 break-all")
-            name_input.on_value_change(lambda value: asyncio.create_task(self.validate_and_log_habit_name(value)))
-
-            star = HabitStarCheckbox(self.item, self.refresh_callback)
-            star.props("flat fab-mini color=grey")
-            star.classes("col-span-1")
-
-            delete = HabitDeleteButton(self.item, self.habit_list, self.refresh_callback)
-            delete.props("flat fab-mini color=grey")
-            delete.classes("col-span-1")
-
-    async def validate_and_log_habit_name(self, value):
-        if not validate_habit_name(value):
-            ui.notify('Habit name must be 1-50 characters long.', type='negative')
-        else:
-            logger.info(f"Habit name updated to: {value}")
-            self.item.name = value  # Assuming the item's name can be updated directly
-
 @ui.refreshable
 async def add_ui(habit_list: HabitList):
     # Sort habits by name for custom order
     sorted_habits = sorted(habit_list.habits, key=lambda x: x.name.lower())
     for item in sorted_habits:
-        HabitAddCard(item, habit_list, add_ui.refresh).render()
+        with ui.row().classes(grid_classes).classes("sortable-item").style(f'id: {item.id}'):
+            name_input = HabitNameInput(item)
+            name_input.classes("col-span-7 break-all")
+            name_input.on_value_change(lambda value, item=item: asyncio.create_task(validate_and_log_habit_name(value, item)))
+
+            star = HabitStarCheckbox(item, add_ui.refresh)
+            star.props("flat fab-mini color=grey")
+            star.classes("col-span-1")
+
+            delete = HabitDeleteButton(item, habit_list, add_ui.refresh)
+            delete.props("flat fab-mini color=grey")
+            delete.classes("col-span-1")
 
     # Adding sortable functionality
     ui.add_head_html('''
@@ -74,6 +53,13 @@ async def add_ui(habit_list: HabitList):
 
     # Event listener for item drop
     ui.on('item_drop', lambda items: asyncio.create_task(item_drop(items, habit_list)))
+
+async def validate_and_log_habit_name(value, item):
+    if not validate_habit_name(value):
+        ui.notify('Habit name must be 1-50 characters long.', type='negative')
+    else:
+        logger.info(f"Habit name updated to: {value}")
+        item.name = value  # Assuming the item's name can be updated directly
 
 async def item_drop(items, habit_list):
     # Update the order of habits based on the new order
