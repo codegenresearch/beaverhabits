@@ -29,54 +29,55 @@ async def import_from_json(text: str) -> HabitList:
         raise
 
 
-async def import_ui_page(user: User):
-    async def handle_file_upload(event: events.UploadEventArguments):
-        try:
-            text = event.content.read().decode("utf-8")
-            other = await import_from_json(text)
+async def handle_upload(event: events.UploadEventArguments):
+    try:
+        text = event.content.read().decode("utf-8")
+        to_habit_list = await import_from_json(text)
 
-            current = await user_storage.get_user_habit_list(user)
-            if current is None:
-                current = DictHabitList({"habits": []})
+        from_habit_list = await user_storage.get_user_habit_list(event.user)
+        if from_habit_list is None:
+            from_habit_list = DictHabitList({"habits": []})
 
-            # Determine added, merged, and unchanged habits
-            current_ids = {habit.id for habit in current.habits}
-            other_ids = {habit.id for habit in other.habits}
-            added_ids = other_ids - current_ids
-            unchanged_ids = current_ids & other_ids
+        # Determine added, merged, and unchanged habits
+        from_ids = {habit.id for habit in from_habit_list.habits}
+        to_ids = {habit.id for habit in to_habit_list.habits}
+        added_ids = to_ids - from_ids
+        unchanged_ids = from_ids & to_ids
 
-            added_habits = [habit for habit in other.habits if habit.id in added_ids]
-            unchanged_habits = [habit for habit in current.habits if habit.id in unchanged_ids]
+        added_habits = [habit for habit in to_habit_list.habits if habit.id in added_ids]
+        unchanged_habits = [habit for habit in from_habit_list.habits if habit.id in unchanged_ids]
 
-            # Merge habits
-            merged_habit_list = await current.merge(other)
-            await user_storage.save_user_habit_list(user, merged_habit_list)
+        # Merge habits
+        merged_habit_list = await from_habit_list.merge(to_habit_list)
+        await user_storage.save_user_habit_list(event.user, merged_habit_list)
 
-            # Log the operation
-            logger.info(
-                f"Imported {len(added_habits)} new habits, "
-                f"merged {len(unchanged_habits)} existing habits for user {user.email}"
-            )
+        # Log the operation
+        logger.info(
+            f"Imported {len(added_habits)} new habits, "
+            f"merged {len(unchanged_habits)} existing habits for user {event.user.email}"
+        )
 
-            # Notify the user
-            ui.notify(
-                f"Imported {len(added_habits)} new habits and merged {len(unchanged_habits)} existing habits",
-                position="top",
-                color="positive",
-            )
+        # Notify the user
+        ui.notify(
+            f"Imported {len(added_habits)} new habits and merged {len(unchanged_habits)} existing habits",
+            position="top",
+            color="positive",
+        )
 
-        except json.JSONDecodeError:
-            ui.notify("Import failed: Invalid JSON format", color="negative", position="top")
-            logger.error("Import failed: Invalid JSON format")
-        except Exception as error:
-            ui.notify(f"Import failed: {str(error)}", color="negative", position="top")
-            logger.error(f"Import failed: {str(error)}")
+    except json.JSONDecodeError:
+        ui.notify("Import failed: Invalid JSON format", color="negative", position="top")
+        logger.error("Import failed: Invalid JSON format")
+    except Exception as error:
+        ui.notify(f"Import failed: {str(error)}", color="negative", position="top")
+        logger.error(f"Import failed: {str(error)}")
 
+
+def import_ui_page(user: User):
     def show_confirmation_dialog(event: events.UploadEventArguments):
         with ui.dialog() as dialog, ui.card().classes("w-64"):
             ui.label("Are you sure? All your current habits will be replaced.")
             with ui.row():
-                ui.button("Yes", on_click=lambda: handle_file_upload(event).then(dialog.close))
+                ui.button("Yes", on_click=lambda: handle_upload(event).then(dialog.close))
                 ui.button("No", on_click=dialog.close)
 
     menu_header("Import Habits", target=get_root_path())
