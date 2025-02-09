@@ -29,32 +29,31 @@ async def import_from_json(text: str) -> HabitList:
         raise
 
 
-async def handle_upload(event: events.UploadEventArguments):
+async def handle_upload(event: events.UploadEventArguments, user: User):
     try:
         text = event.content.read().decode("utf-8")
-        to_habit_list = await import_from_json(text)
+        new_habits = await import_from_json(text)
 
-        from_habit_list = await user_storage.get_user_habit_list(event.user)
-        if from_habit_list is None:
-            from_habit_list = DictHabitList({"habits": []})
+        current_habits = await user_storage.get_user_habit_list(user)
+        if current_habits is None:
+            current_habits = DictHabitList({"habits": []})
 
-        # Determine added, merged, and unchanged habits
-        from_ids = {habit.id for habit in from_habit_list.habits}
-        to_ids = {habit.id for habit in to_habit_list.habits}
-        added_ids = to_ids - from_ids
-        unchanged_ids = from_ids & to_ids
+        # Determine added and unchanged habits
+        current_ids = {habit.id for habit in current_habits.habits}
+        new_ids = {habit.id for habit in new_habits.habits}
+        added_ids = new_ids - current_ids
 
-        added_habits = [habit for habit in to_habit_list.habits if habit.id in added_ids]
-        unchanged_habits = [habit for habit in from_habit_list.habits if habit.id in unchanged_ids]
+        added_habits = [habit for habit in new_habits.habits if habit.id in added_ids]
+        unchanged_habits = [habit for habit in current_habits.habits if habit.id not in added_ids]
 
         # Merge habits
-        merged_habit_list = await from_habit_list.merge(to_habit_list)
-        await user_storage.save_user_habit_list(event.user, merged_habit_list)
+        merged_habits = await current_habits.merge(new_habits)
+        await user_storage.save_user_habit_list(user, merged_habits)
 
         # Log the operation
         logger.info(
             f"Imported {len(added_habits)} new habits, "
-            f"merged {len(unchanged_habits)} existing habits for user {event.user.email}"
+            f"merged {len(unchanged_habits)} existing habits for user {user.email}"
         )
 
         # Notify the user
@@ -77,7 +76,7 @@ def import_ui_page(user: User):
         with ui.dialog() as dialog, ui.card().classes("w-64"):
             ui.label("Are you sure? All your current habits will be replaced.")
             with ui.row():
-                ui.button("Yes", on_click=lambda: handle_upload(event).then(dialog.close))
+                ui.button("Yes", on_click=lambda: handle_upload(event, user).then(dialog.close))
                 ui.button("No", on_click=dialog.close)
 
     menu_header("Import Habits", target=get_root_path())
