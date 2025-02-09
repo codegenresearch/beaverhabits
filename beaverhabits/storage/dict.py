@@ -13,24 +13,36 @@ logger = logging.getLogger(__name__)
 
 @dataclass(init=False)
 class DictStorage:
+    """
+    Base class for storage classes that use a dictionary to store data.
+    """
     data: dict = field(default_factory=dict, metadata={"exclude": True})
 
 @dataclass
 class DictRecord(CheckedRecord, DictStorage):
     """
-    Manages individual habit records with day and completion status.
+    Represents a single record of a habit, including the day and whether it was completed.
     """
 
     @property
     def day(self) -> datetime.date:
+        """
+        Returns the day of the record as a datetime.date object.
+        """
         return datetime.datetime.strptime(self.data["day"], DAY_MASK).date()
 
     @property
     def done(self) -> bool:
+        """
+        Returns the completion status of the record.
+        """
         return self.data["done"]
 
     @done.setter
     def done(self, value: bool) -> None:
+        """
+        Sets the completion status of the record.
+        """
         self.data["done"] = value
 
 @dataclass
@@ -41,43 +53,73 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @property
     def id(self) -> str:
+        """
+        Returns the unique identifier for the habit. Generates a new ID if it doesn't exist.
+        """
         if "id" not in self.data:
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
     @id.setter
     def id(self, value: str) -> None:
+        """
+        Sets the unique identifier for the habit.
+        """
         self.data["id"] = value
 
     @property
     def name(self) -> str:
+        """
+        Returns the name of the habit.
+        """
         return self.data["name"]
 
     @name.setter
     def name(self, value: str) -> None:
+        """
+        Sets the name of the habit.
+        """
         self.data["name"] = value
 
     @property
     def star(self) -> bool:
+        """
+        Returns the star status of the habit.
+        """
         return self.data.get("star", False)
 
     @star.setter
     def star(self, value: bool) -> None:
+        """
+        Sets the star status of the habit.
+        """
         self.data["star"] = value
 
     @property
     def records(self) -> list[DictRecord]:
+        """
+        Returns a list of records associated with the habit.
+        """
         return [DictRecord(d) for d in self.data["records"]]
 
     def __eq__(self, other: object) -> bool:
+        """
+        Checks if two habits are equal based on their IDs.
+        """
         if not isinstance(other, DictHabit):
             return NotImplemented
         return self.id == other.id
 
     def __hash__(self) -> int:
+        """
+        Returns the hash value of the habit based on its ID.
+        """
         return hash(self.id)
 
     async def tick(self, day: datetime.date, done: bool) -> None:
+        """
+        Updates the completion status of a record for a specific day.
+        """
         if record := next((r for r in self.records if r.day == day), None):
             record.done = done
         else:
@@ -106,22 +148,34 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 
     @property
     def habits(self) -> list[DictHabit]:
+        """
+        Returns a sorted list of habits, prioritizing starred habits.
+        """
         habits = [DictHabit(d) for d in self.data["habits"]]
         habits.sort(key=lambda x: x.star, reverse=True)
         return habits
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
+        """
+        Retrieves a habit by its unique ID.
+        """
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
         return None
 
     async def add(self, name: str) -> None:
+        """
+        Adds a new habit to the list.
+        """
         d = {"name": name, "records": [], "id": generate_short_hash(name)}
         self.data["habits"].append(d)
 
     async def remove(self, item: DictHabit) -> None:
-        self.data["habits"] = [h.data for h in self.habits if h != item]
+        """
+        Removes a habit from the list based on its ID.
+        """
+        self.data["habits"] = [h.data for h in self.habits if h.id != item.id]
 
     async def merge_user_habit_list(self, user: 'User', other: 'DictHabitList') -> 'DictHabitList':
         """
