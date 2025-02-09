@@ -7,9 +7,11 @@ from beaverhabits.utils import generate_short_hash
 DAY_MASK = "%Y-%m-%d"
 MONTH_MASK = "%Y/%m"
 
+
 @dataclass(init=False)
 class DictStorage:
     data: dict = field(default_factory=dict, metadata={"exclude": True})
+
 
 @dataclass
 class DictRecord(CheckedRecord, DictStorage):
@@ -41,6 +43,7 @@ class DictRecord(CheckedRecord, DictStorage):
     def done(self, value: bool) -> None:
         self.data["done"] = value
 
+
 @dataclass
 class DictHabit(Habit[DictRecord], DictStorage):
     @property
@@ -66,11 +69,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
     async def tick(self, day: datetime.date, done: bool) -> None:
@@ -104,11 +107,12 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     __repr__ = __str__
 
+
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
 
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         habits = [DictHabit(d) for d in self.data["habits"]]
         if self.order:
             habits.sort(key=lambda x: self.order.index(str(x.id)) if str(x.id) in self.order else float('inf'))
@@ -117,11 +121,11 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return habits
 
     @property
-    def order(self) -> list[str]:
+    def order(self) -> List[str]:
         return self.data.get("order", [])
 
     @order.setter
-    def order(self, value: list[str]) -> None:
+    def order(self, value: List[str]) -> None:
         self.data["order"] = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
