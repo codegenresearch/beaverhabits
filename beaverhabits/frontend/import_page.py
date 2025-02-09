@@ -14,9 +14,9 @@ from beaverhabits.views import user_storage
 logger = logging.getLogger(__name__)
 
 
-async def import_from_json(json_text: str) -> HabitList:
+async def import_from_json(text: str) -> HabitList:
     try:
-        data = json.loads(json_text)
+        data = json.loads(text)
         habit_list = DictHabitList(data)
         if not habit_list.habits:
             raise ValueError("No habits found in the JSON data")
@@ -29,11 +29,11 @@ async def import_from_json(json_text: str) -> HabitList:
         raise
 
 
-async def display_import_ui(user: User):
+async def import_ui_page(user: User):
     async def handle_file_upload(event: events.UploadEventArguments):
         try:
-            file_content = event.content.read().decode("utf-8")
-            other = await import_from_json(file_content)
+            text = event.content.read().decode("utf-8")
+            other = await import_from_json(text)
 
             current = await user_storage.get_user_habit_list(user)
             if current is None:
@@ -72,7 +72,14 @@ async def display_import_ui(user: User):
             ui.notify(f"Import failed: {str(error)}", color="negative", position="top")
             logger.error(f"Import failed: {str(error)}")
 
+    def show_confirmation_dialog(event: events.UploadEventArguments):
+        with ui.dialog() as dialog, ui.card().classes("w-64"):
+            ui.label("Are you sure? All your current habits will be replaced.")
+            with ui.row():
+                ui.button("Yes", on_click=lambda: handle_file_upload(event).then(dialog.close))
+                ui.button("No", on_click=dialog.close)
+
     menu_header("Import Habits", target=get_root_path())
 
-    ui.upload(on_upload=handle_file_upload, max_files=1).props("accept=.json")
+    ui.upload(on_upload=show_confirmation_dialog, max_files=1).props("accept=.json")
     return
