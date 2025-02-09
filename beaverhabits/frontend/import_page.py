@@ -33,8 +33,8 @@ async def import_from_json(text: str) -> HabitList:
 def import_ui_page(user: User):
     async def handle_upload(e: events.UploadEventArguments):
         try:
-            file_content = e.content.read().decode("utf-8")
-            other = await import_from_json(file_content)
+            text = e.content.read().decode("utf-8")
+            other = await import_from_json(text)
             current = await user_storage.get_user_habit_list(user)
 
             if current:
@@ -59,16 +59,12 @@ def import_ui_page(user: User):
             logger.error(f"Unexpected error: {e}")
             ui.notify("An unexpected error occurred.", color="negative", position="top")
 
-    def show_confirmation_dialog():
+    async def confirm_and_upload(e: events.UploadEventArguments):
         with ui.dialog() as dialog, ui.card().classes("w-64"):
             ui.label("Are you sure? Importing will replace all your current habits.")
             with ui.row():
                 ui.button("Yes", on_click=lambda: dialog.submit("Yes"))
                 ui.button("No", on_click=lambda: dialog.submit("No"))
-        return dialog
-
-    async def confirm_and_upload(e: events.UploadEventArguments):
-        dialog = show_confirmation_dialog()
         result = await dialog
         if result == "Yes":
             await handle_upload(e)
