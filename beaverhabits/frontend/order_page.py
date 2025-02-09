@@ -27,7 +27,7 @@ async def item_drop(e, habit_list: HabitList):
         if isinstance(x, components.HabitOrderCard) and x.habit and not x.habit.is_deleted
     ]
     habit_list.order = [str(x.id) for x in habits]
-    logger.info(f"Dropped item: {dragged.habit.name} to index {e.args['new_index']}")
+    logger.info(f"Item dropped: {dragged.habit.name} to index {e.args['new_index']}")
     logger.info(f"New order: {[habit.name for habit in habits]}")
 
     # Manage habit status based on new position
@@ -51,12 +51,9 @@ def add_ui(habit_list: HabitList):
             if not item.is_deleted:
                 with components.HabitOrderCard(item):
                     with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
-                        if item.status == HabitStatus.ACTIVE:
-                            name = HabitNameInput(item)
-                            name.classes("col-span-6 break-all")
-                            name.props("borderless")
-                        else:
-                            ui.label(item.name).classes("col-span-6 break-all text-gray-500")
+                        name = HabitNameInput(item)
+                        name.classes("col-span-6 break-all")
+                        name.props("borderless")
 
                         ui.space().classes("col-span-4")
 
