@@ -29,11 +29,11 @@ def dummy_habit_list(days: List[datetime.date]):
     ]
     return DictHabitList({"habits": items})
 
-async def get_session_habit_list() -> HabitList | None:
+def get_session_habit_list() -> HabitList | None:
     return session_storage.get_user_habit_list()
 
 async def get_session_habit(habit_id: str) -> Habit:
-    habit_list = await get_session_habit_list()
+    habit_list = get_session_habit_list()
     if habit_list is None:
         raise HTTPException(status_code=404, detail="Habit list not found")
 
@@ -44,7 +44,8 @@ async def get_session_habit(habit_id: str) -> Habit:
     return habit
 
 def get_or_create_session_habit_list(days: List[datetime.date]) -> HabitList:
-    if (habit_list := get_session_habit_list()) is not None:
+    habit_list = get_session_habit_list()
+    if habit_list is not None:
         return habit_list
 
     habit_list = dummy_habit_list(days)
@@ -66,7 +67,8 @@ async def get_user_habit(user: User, habit_id: str) -> Habit:
     return habit
 
 async def get_or_create_user_habit_list(user: User, days: List[datetime.date]) -> HabitList:
-    if (habit_list := await get_user_habit_list(user)) is not None:
+    habit_list = await get_user_habit_list(user)
+    if habit_list is not None:
         return habit_list
 
     habit_list = dummy_habit_list(days)
@@ -82,7 +84,7 @@ async def export_user_habit_list(habit_list: HabitList, user_identify: str) -> N
             **habit_list.data,
         }
         binary_data = json.dumps(data).encode()
-        file_name = f"habits_{int(time.time())}.json"
+        file_name = f"habits_{int(float(time.time()))}.json"
         ui.download(binary_data, file_name)
     else:
         ui.notification("Export failed, please try again later.")
