@@ -1,10 +1,11 @@
 import datetime
-from typing import List, Optional, Protocol, TypeVar
+from typing import List, Optional, Protocol, TypeVar, Union
 
 from beaverhabits.app.db import User
 
 R = TypeVar('R', bound='CheckedRecord')
 H = TypeVar('H', bound='Habit[R]')
+L = TypeVar('L', bound='HabitList[H]')
 
 class CheckedRecord(Protocol):
     @property
@@ -24,7 +25,7 @@ class CheckedRecord(Protocol):
 
 class Habit(Protocol[R]):
     @property
-    def id(self) -> str: ...
+    def id(self) -> Union[str, int]: ...
 
     @property
     def name(self) -> str: ...
