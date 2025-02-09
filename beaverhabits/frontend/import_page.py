@@ -22,33 +22,31 @@ def import_from_json(text: str) -> HabitList:
         if not habit_list.habits:
             raise ValueError("No habits found in the imported data.")
         return habit_list
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to decode JSON: {e}")
+        raise ValueError("Invalid JSON format.")
     except Exception as e:
         logger.error(f"Failed to import habits: {e}")
-        raise
+        raise ValueError("Failed to import habits.")
 
 
 def import_ui_page(user: User):
-    async def handle_file_upload(event: events.UploadEventArguments):
-        try:
-            file_content = event.content.read().decode("utf-8")
-            new_habit_list = import_from_json(file_content)
-            from_habit_list = await user_storage.get_user_habit_list(user)
+    async def handle_upload(event: events.UploadEventArguments):
+        file_content = event.content.read().decode("utf-8")
+        other = import_from_json(file_content)
+        current = await user_storage.get_user_habit_list(user)
 
-            if from_habit_list:
-                merged_habit_list = await from_habit_list.merge(new_habit_list)
-                added_habits = len(merged_habit_list.habits) - len(from_habit_list.habits)
-                logger.info(f"Merged {added_habits} new habits with existing habits.")
-                message = f"Merged {added_habits} new habits."
-            else:
-                merged_habit_list = new_habit_list
-                logger.info(f"Imported {len(new_habit_list.habits)} new habits.")
-                message = f"Imported {len(new_habit_list.habits)} habits."
+        if current:
+            added, merged, unchanged = calculate_changes(current, other)
+            logger.info(f"Added: {len(added)}, Merged: {len(merged)}, Unchanged: {len(unchanged)}")
+            message = f"Added {len(added)}, Merged {len(merged)}, Unchanged {len(unchanged)} habits."
+        else:
+            added = other.habits
+            logger.info(f"Imported {len(added)} new habits.")
+            message = f"Imported {len(added)} habits."
 
-            await user_storage.save_user_habit_list(user, merged_habit_list)
-            ui.notify(message, position="top", color="positive")
-        except Exception as e:
-            ui.notify(f"Import failed: {str(e)}", color="negative", position="top")
-            logger.error(f"Import failed with an error: {str(e)}")
+        await user_storage.save_user_habit_list(user, other)
+        ui.notify(message, position="top", color="positive")
 
     def show_confirmation_dialog():
         with ui.dialog() as dialog, ui.card().classes("w-64"):
@@ -58,7 +56,24 @@ def import_ui_page(user: User):
                 ui.button("No", on_click=lambda: dialog.submit("No"))
         return dialog
 
+    def calculate_changes(current: HabitList, other: HabitList):
+        current_ids = {habit.id for habit in current.habits}
+        other_ids = {habit.id for habit in other.habits}
+
+        added = [habit for habit in other.habits if habit.id not in current_ids]
+        unchanged = [habit for habit in current.habits if habit.id in other_ids]
+        merged = [habit for habit in other.habits if habit.id in current_ids]
+
+        return added, merged, unchanged
+
+    async def confirm_and_upload(event: events.UploadEventArguments):
+        dialog = show_confirmation_dialog()
+        result = await dialog
+        if result != "Yes":
+            return
+        await handle_upload(event)
+
     menu_header("Import Habits", target=get_root_path())
 
-    ui.upload(on_upload=handle_file_upload, max_files=1).props("accept=.json")
+    ui.upload(on_upload=confirm_and_upload, max_files=1).props("accept=.json")
     return
