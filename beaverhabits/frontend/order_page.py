@@ -27,7 +27,7 @@ async def item_drop(e, habit_list: HabitList):
         if isinstance(x, components.HabitOrderCard) and not x.habit.is_deleted
     ]
     habit_list.order = [str(x.id) for x in habits]
-    logger.info(f"Dropped habit ID={e.args['id']} to new index={e.args['new_index']}")
+    logger.info(f"Dropped habit ID={e.args['id']} to index={e.args['new_index']}")
 
     # Handle habit status based on new position
     for index, habit in enumerate(habits):
@@ -103,7 +103,6 @@ def order_page_ui(habit_list: HabitList):
 5. **Column Classes**: Matched the classes assigned to UI elements with those in the gold code.
 6. **Redundant Checks**: Reviewed and simplified checks for habit status.
 7. **Use of `with` Statements**: Used `with` statements effectively to manage the context of UI components.
-
 
 ### Revised Code:
 
