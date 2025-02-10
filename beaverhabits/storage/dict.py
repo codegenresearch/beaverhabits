@@ -84,8 +84,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         Updates the completion status of a record for a specific day.
         If the record does not exist, it creates a new one.
         """
-        record = next((r for r in self.records if r.day == day), None)
-        if record:
+        if (record := next((r for r in self.records if r.day == day), None)) is not None:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
@@ -112,7 +111,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     def __str__(self):
         """Returns the string representation of the habit including its ID."""
-        return f"{self.name} (ID: {self.id})"
+        return f"{self.name}<{self.id}>"
 
     __repr__ = __str__
 
@@ -165,8 +164,8 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         """
         Removes a habit from the list.
         """
-        self.data["habits"] = [h.data for h in self.habits if h != item]
-        self.data["order"] = [h_id for h_id in self.order if h_id != item.id]
+        self.data["habits"].remove(item.data)
+        self.data["order"].remove(item.id)
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
         """
