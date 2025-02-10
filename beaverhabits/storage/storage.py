@@ -3,9 +3,6 @@ from typing import List, Optional, Protocol, TypeVar, Union
 
 from beaverhabits.app.db import User
 
-R = TypeVar('R', bound=CheckedRecord)
-H = TypeVar('H', bound=Habit)
-
 class CheckedRecord(Protocol):
     @property
     def day(self) -> datetime.date:
@@ -24,6 +21,8 @@ class CheckedRecord(Protocol):
 
     __repr__ = __str__
 
+R = TypeVar('R', bound=CheckedRecord)
+H = TypeVar('H', bound='Habit[R]')
 
 class Habit(Protocol[R]):
     @property
@@ -39,11 +38,11 @@ class Habit(Protocol[R]):
         ...
 
     @property
-    def star(self) -> int:
+    def star(self) -> bool:
         ...
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         ...
 
     @property
