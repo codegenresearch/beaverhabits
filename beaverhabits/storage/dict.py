@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import datetime
 from typing import List, Optional
 
-from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList, HabitStatus
+from beaverhabits.storage.storage import CheckedRecord, HabitStatus, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 
 DAY_MASK = "%Y-%m-%d"
@@ -70,11 +70,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: bool) -> None:
-        self.data["star"] = value
+    def star(self, value: int) -> None:
+        self.data["star"] = bool(value)
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
     @property
@@ -120,7 +120,12 @@ class DictHabit(Habit[DictRecord], DictStorage):
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
-    def habits(self) -> List[DictHabit]:
+    def habits(self) -> list[DictHabit]:
+        status_order = {
+            HabitStatus.ACTIVE: 1,
+            HabitStatus.ARCHIVED: 2,
+            HabitStatus.SOLF_DELETED: 3,
+        }
         habits = [
             DictHabit(d)
             for d in self.data["habits"]
@@ -131,7 +136,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         habits.sort(
             key=lambda x: (
                 self.order.index(str(x.id)) if str(x.id) in self.order else float("inf"),
-                HabitStatus(x.data.get("status", HabitStatus.ACTIVE.value)).value,
+                status_order[HabitStatus(x.data.get("status", HabitStatus.ACTIVE.value))],
             )
         )
 
