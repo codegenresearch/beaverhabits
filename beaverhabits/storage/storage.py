@@ -5,6 +5,12 @@ from typing import List, Optional, Protocol
 from beaverhabits.app.db import User
 
 
+class HabitStatus(Enum):
+    ACTIVE = "normal"
+    ARCHIVED = "archive"
+    SOFT_DELETE = "soft_delete"  # Corrected spelling
+
+
 class CheckedRecord(Protocol):
     @property
     def day(self) -> datetime.date: ...
@@ -21,13 +27,7 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class HabitStatus(Enum):
-    ACTIVE = "normal"
-    ARCHIVED = "archive"
-    SOLF_DELETED = "soft_deleted"  # Corrected spelling
-
-
-class Habit[R: CheckedRecord](Protocol):
+class Habit(Protocol):
     @property
     def id(self) -> str | int: ...
 
@@ -41,7 +41,7 @@ class Habit[R: CheckedRecord](Protocol):
     def star(self) -> bool: ...
 
     @star.setter
-    def star(self, value: int) -> None: ...
+    def star(self, value: bool) -> None: ...  # Changed type from int to bool
 
     @property
     def status(self) -> HabitStatus: ...
@@ -50,7 +50,7 @@ class Habit[R: CheckedRecord](Protocol):
     def status(self, value: HabitStatus) -> None: ...
 
     @property
-    def records(self) -> List[R]: ...
+    def records(self) -> List[CheckedRecord]: ...
 
     @property
     def ticked_days(self) -> list[datetime.date]:
@@ -64,9 +64,9 @@ class Habit[R: CheckedRecord](Protocol):
     __repr__ = __str__
 
 
-class HabitList[H: Habit](Protocol):
+class HabitList(Protocol):
     @property
-    def habits(self) -> List[H]: ...
+    def habits(self) -> List[Habit]: ...
 
     @property
     def order(self) -> List[str]: ...
@@ -76,20 +76,20 @@ class HabitList[H: Habit](Protocol):
 
     async def add(self, name: str) -> None: ...
 
-    async def remove(self, item: H) -> None: ...
+    async def remove(self, item: Habit) -> None: ...
 
-    async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
-
-
-class SessionStorage[L: HabitList](Protocol):
-    def get_user_habit_list(self) -> Optional[L]: ...
-
-    def save_user_habit_list(self, habit_list: L) -> None: ...
+    async def get_habit_by(self, habit_id: str) -> Optional[Habit]: ...
 
 
-class UserStorage[L: HabitList](Protocol):
-    async def get_user_habit_list(self, user: User) -> Optional[L]: ...
+class SessionStorage(Protocol):
+    def get_user_habit_list(self) -> Optional[HabitList]: ...
 
-    async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
+    def save_user_habit_list(self, habit_list: HabitList) -> None: ...
 
-    async def merge_user_habit_list(self, user: User, other: L) -> L: ...
+
+class UserStorage(Protocol):
+    async def get_user_habit_list(self, user: User) -> Optional[HabitList]: ...
+
+    async def save_user_habit_list(self, user: User, habit_list: HabitList) -> None: ...
+
+    async def merge_user_habit_list(self, user: User, other: HabitList) -> HabitList: ...
