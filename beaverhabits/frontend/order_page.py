@@ -10,6 +10,7 @@ from beaverhabits.frontend.components import (
 from beaverhabits.frontend.layout import layout
 from beaverhabits.logging import logger
 from beaverhabits.storage.storage import HabitList
+from beaverhabits.storage.enums import HabitStatus  # Assuming HabitStatus is defined in enums
 
 
 async def item_drop(e, habit_list: HabitList):
@@ -27,17 +28,23 @@ async def item_drop(e, habit_list: HabitList):
     ]
     habit_list.order = [str(x.id) for x in habits]
     for habit in habits:
-        habit.status = 'active' if habit.id in habit_list.order else 'inactive'
-    logger.info(f"New order: {habits}")
+        if str(habit.id) in habit_list.order:
+            habit.status = HabitStatus.ACTIVE
+        else:
+            habit.status = HabitStatus.INACTIVE
+    logger.info(f"Item {dragged.id} dropped to new index {e.args['new_index']}. New order: {habits}")
 
 
 @ui.refreshable
 def add_ui(habit_list: HabitList):
     with ui.column().classes("sortable").classes("gap-3"):
-        for item in sorted(habit_list.habits, key=lambda x: (x.star, x.status == 'inactive')):
+        for item in sorted(habit_list.habits, key=lambda x: (x.star, x.status == HabitStatus.INACTIVE)):
             with components.HabitOrderCard(item):
                 with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
-                    name = HabitNameInput(item)
+                    if item.status == HabitStatus.ACTIVE:
+                        name = HabitNameInput(item)
+                    else:
+                        name = ui.label(item.name).classes("col-span-3 col-3")
                     name.classes("col-span-3 col-3")
                     name.props("borderless")
 
