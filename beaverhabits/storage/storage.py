@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Optional, Protocol, Union
+from typing import List, Optional, Protocol
 
 from beaverhabits.app.db import User
 
@@ -25,7 +25,7 @@ class CheckedRecord(Protocol):
 
 class Habit[R: CheckedRecord](Protocol):
     @property
-    def id(self) -> Union[str, int]:
+    def id(self) -> str | int:
         ...
 
     @property
