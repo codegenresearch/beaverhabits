@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List
 
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
@@ -12,6 +12,14 @@ MONTH_MASK = "%Y/%m"
 @dataclass(init=False)
 class DictStorage:
     data: dict = field(default_factory=dict, metadata={"exclude": True})
+
+    def save_user_habit_list(self, habit_list: 'DictHabitList') -> None:
+        self.data = habit_list.data
+
+    def get_user_habit_list(self) -> Optional['DictHabitList']:
+        if self.data:
+            return DictHabitList(self.data)
+        return None
 
 
 @dataclass
@@ -53,10 +61,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
-    @id.setter
-    def id(self, value: str) -> None:
-        self.data["id"] = value
-
     @property
     def name(self) -> str:
         return self.data["name"]
@@ -70,60 +74,33 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
-    async def tick(self, day: datetime.date, done: bool) -> None:
+    async def tick(self, day: datetime.date, done: bool) -> bool:
         if record := next((r for r in self.records if r.day == day), None):
             record.done = done
+            return True
         else:
             data = {"day": day.strftime(DAY_MASK), "done": done}
             self.data["records"].append(data)
+            return True
 
-    async def merge(self, other: "DictHabit") -> "DictHabit":
-        self_ticks = {r.data["day"] for r in self.records if r.done}
-        other_ticks = {r.data["day"] for r in other.records if r.done}
-        result = sorted(list(self_ticks | other_ticks))
-
-        d = {
-            "name": self.name,
-            "records": [{"day": day, "done": True} for day in result],
-        }
-        return DictHabit(d)
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, DictHabit) and self.id == other.id
-
-    def __hash__(self) -> int:
-        return hash(self.id)
+    async def merge(self, other: 'DictHabit') -> bool:
+        for record in other.records:
+            if not any(r.day == record.day for r in self.records):
+                self.data["records"].append(record.data)
+        return True
 
 
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
-    """Dict storage for HabitList
-
-    Example:
-    {
-        "habits": [
-            {
-                "name": "habit1",
-                "records": [
-                    {"day": "2021-01-01", "done": true},
-                    {"day": "2021-01-02", "done": false}
-                ]
-            },
-            {
-                "name": "habit2",
-                "records": []
-            ...
-    """
-
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         habits = [DictHabit(d) for d in self.data["habits"]]
         habits.sort(key=lambda x: x.star, reverse=True)
         return habits
@@ -132,22 +109,26 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
-    async def add(self, name: str) -> None:
+    async def add(self, name: str) -> bool:
+        if any(habit.name == name for habit in self.habits):
+            return False
         d = {"name": name, "records": [], "id": generate_short_hash(name)}
         self.data["habits"].append(d)
+        return True
 
-    async def remove(self, item: DictHabit) -> None:
-        self.data["habits"].remove(item.data)
+    async def remove(self, item: DictHabit) -> bool:
+        if item.data in self.data["habits"]:
+            self.data["habits"].remove(item.data)
+            return True
+        return False
 
-    async def merge(self, other: "DictHabitList") -> "DictHabitList":
-        result = set(self.habits).symmetric_difference(set(other.habits))
-
-        # Merge the habit if it exists
-        for self_habit in self.habits:
-            for other_habit in other.habits:
-                if self_habit == other_habit:
-                    new_habit = await self_habit.merge(other_habit)
-                    result.add(new_habit)
-
-        return DictHabitList({"habits": [h.data for h in result]})
+    async def merge_user_habit_list(self, other: 'DictHabitList') -> bool:
+        for habit in other.habits:
+            existing_habit = next((h for h in self.habits if h.id == habit.id), None)
+            if existing_habit:
+                await existing_habit.merge(habit)
+            else:
+                self.data["habits"].append(habit.data)
+        return True
