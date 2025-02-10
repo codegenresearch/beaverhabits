@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def import_from_json(text: str) -> HabitList:
+async def import_from_json(text: str) -> HabitList:
     data = json.loads(text)
     habit_list = DictHabitList(data)
     if not habit_list.habits:
@@ -27,21 +27,21 @@ def import_ui_page(user: User):
     async def handle_upload(e: events.UploadEventArguments):
         try:
             text = e.content.read().decode("utf-8")
-            new_habit_list = import_from_json(text)
-            current_habit_list = await user_storage.get_user_habit_list(user)
-            if current_habit_list:
-                merged_habit_list = await current_habit_list.merge(new_habit_list)
-                added_habits = [habit for habit in merged_habit_list.habits if habit not in current_habit_list.habits]
-                merged_habits = [habit for habit in merged_habit_list.habits if habit in current_habit_list.habits]
-                unchanged_habits = [habit for habit in current_habit_list.habits if habit not in new_habit_list.habits]
-                logger.info(f"Added habits: {len(added_habits)}, Merged habits: {len(merged_habits)}, Unchanged habits: {len(unchanged_habits)}")
+            other = await import_from_json(text)
+            current = await user_storage.get_user_habit_list(user)
+
+            if current:
+                merged = await current.merge(other)
+                added = set(other.habits) - set(current.habits)
+                unchanged = set(current.habits) - set(other.habits)
+                logger.info(f"Added habits: {len(added)}, Unchanged habits: {len(unchanged)}")
             else:
-                merged_habit_list = new_habit_list
-                added_habits = new_habit_list.habits
-                logger.info(f"Added habits: {len(added_habits)}")
+                merged = other
+                added = set(other.habits)
+                logger.info(f"Added habits: {len(added)}")
 
             with ui.dialog() as dialog, ui.card().classes("w-64"):
-                ui.label(f"Are you sure? This will add {len(added_habits)} new habits and merge {len(merged_habits)} existing habits.")
+                ui.label(f"Are you sure? This will add {len(added)} new habits.")
                 with ui.row():
                     ui.button("Yes", on_click=lambda: dialog.submit("Yes"))
                     ui.button("No", on_click=lambda: dialog.submit("No"))
@@ -50,9 +50,9 @@ def import_ui_page(user: User):
             if result != "Yes":
                 return
 
-            await user_storage.save_user_habit_list(user, merged_habit_list)
+            await user_storage.save_user_habit_list(user, merged)
             ui.notify(
-                f"Imported {len(new_habit_list.habits)} habits",
+                f"Imported {len(other.habits)} habits",
                 position="top",
                 color="positive",
             )
@@ -66,4 +66,4 @@ def import_ui_page(user: User):
     menu_header("Import", target=get_root_path())
 
     ui.upload(on_upload=handle_upload, max_files=1).props("accept=.json")
-    return None
+    return
