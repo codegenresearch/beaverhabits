@@ -5,6 +5,13 @@ from enum import Enum
 from beaverhabits.app.db import User
 
 
+class HabitStatus(Enum):
+    NORMAL = "normal"
+    ARCHIVE = "archive"
+    SOFT_DELETE = "soft_delete"
+    ACTIVE = "active"
+
+
 class CheckedRecord(Protocol):
     @property
     def day(self) -> datetime.date: ...
@@ -15,16 +22,10 @@ class CheckedRecord(Protocol):
     @done.setter
     def done(self, value: bool) -> None: ...
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.day} {'[x]' if self.done else '[ ]'}"
 
     __repr__ = __str__
-
-
-class HabitStatus(Enum):
-    ACTIVE = "active"
-    ARCHIVED = "archived"
-    SOFT_DELETED = "soft_deleted"
 
 
 class Habit[R: CheckedRecord](Protocol):
