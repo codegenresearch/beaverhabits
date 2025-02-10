@@ -30,18 +30,16 @@ def dummy_habit_list(days: List[datetime.date]) -> HabitList:
     ]
     return DictHabitList({"habits": items})
 
-def get_session_habit_list() -> Optional[HabitList]:
+def get_session_habit_list() -> HabitList | None:
     """Get the habit list from session storage."""
     return session_storage.get_user_habit_list()
 
 async def get_session_habit(habit_id: str) -> Habit:
     """Get a specific habit from the session habit list."""
-    habit_list = get_session_habit_list()
-    if habit_list is None:
+    if (habit_list := get_session_habit_list()) is None:
         raise HTTPException(status_code=404, detail="Habit list not found")
 
-    habit = await habit_list.get_habit_by(habit_id)
-    if habit is None:
+    if (habit := await habit_list.get_habit_by(habit_id)) is None:
         raise HTTPException(status_code=404, detail="Habit not found")
 
     return habit
@@ -55,7 +53,7 @@ def get_or_create_session_habit_list(days: List[datetime.date]) -> HabitList:
     session_storage.save_user_habit_list(habit_list)
     return habit_list
 
-async def get_user_habit_list(user: User) -> Optional[HabitList]:
+async def get_user_habit_list(user: User) -> HabitList | None:
     """Get the habit list for a specific user."""
     return await user_storage.get_user_habit_list(user)
 
@@ -64,16 +62,12 @@ async def get_user_habit(user: User, habit_id: str) -> Habit:
     if (habit_list := await get_user_habit_list(user)) is None:
         raise HTTPException(status_code=404, detail="Habit list not found")
 
-    habit = await habit_list.get_habit_by(habit_id)
-    if habit is None:
+    if (habit := await habit_list.get_habit_by(habit_id)) is None:
         raise HTTPException(status_code=404, detail="Habit not found")
 
     return habit
 
-async def get_or_create_user_habit_list(
-    user: User,
-    days: List[datetime.date]
-) -> HabitList:
+async def get_or_create_user_habit_list(user: User, days: List[datetime.date]) -> HabitList:
     """Get or create a user habit list."""
     if (habit_list := await get_user_habit_list(user)) is not None:
         return habit_list
@@ -84,7 +78,6 @@ async def get_or_create_user_habit_list(
 
 async def export_user_habit_list(habit_list: HabitList, user_identify: str) -> None:
     """Export the user's habit list to a JSON file."""
-    # json to binary
     if isinstance(habit_list, DictHabitList):
         data = {
             "user_email": user_identify,
