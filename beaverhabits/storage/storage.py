@@ -1,7 +1,11 @@
 import datetime
-from typing import List, Optional, Protocol
+from typing import List, Optional, Protocol, TypeVar
 
 from beaverhabits.app.db import User
+
+R = TypeVar('R', bound='CheckedRecord')
+H = TypeVar('H', bound='Habit')
+L = TypeVar('L', bound='HabitList')
 
 
 class CheckedRecord(Protocol):
@@ -20,7 +24,7 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit[R](Protocol):
+class Habit(Protocol[R]):
     @property
     def id(self) -> str | int: ...
 
@@ -51,7 +55,7 @@ class Habit[R](Protocol):
     __repr__ = __str__
 
 
-class HabitList[H](Protocol):
+class HabitList(Protocol[H]):
     @property
     def habits(self) -> List[H]: ...
 
@@ -70,13 +74,13 @@ class HabitList[H](Protocol):
     async def merge(self, other: "HabitList[H]") -> "HabitList[H]": ...
 
 
-class SessionStorage[L](Protocol):
+class SessionStorage(Protocol[L]):
     def get_user_habit_list(self) -> Optional[L]: ...
 
     def save_user_habit_list(self, habit_list: L) -> None: ...
 
 
-class UserStorage[L](Protocol):
+class UserStorage(Protocol[L]):
     async def get_user_habit_list(self, user: User) -> Optional[L]: ...
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
