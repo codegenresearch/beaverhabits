@@ -1,10 +1,12 @@
 import calendar
 import datetime
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 
 from nicegui import events, ui
 from nicegui.elements.button import Button
+from nicegui.elements.draggable import Draggable
+from nicegui.elements.droppable import Droppable
 
 from beaverhabits.configs import settings
 from beaverhabits.frontend import icons
@@ -64,35 +66,20 @@ class HabitCheckBox(ui.checkbox):
 
     async def _async_task(self, e: events.ValueChangeEventArguments):
         self._update_style(e.value)
-        # await asyncio.sleep(5)
-        # ui.notify(f"Asynchronous task started: {self.record}")
         await self.habit.tick(self.day, e.value)
         logger.info(f"Day {self.day} ticked: {e.value}")
-
-
-class HabitAddCard(ui.card):
-    def __init__(self, habit: Habit):
-        super().__init__()
-        self.habit = habit
-        self.props("flat dense draggable").classes("cursor-grab")
 
 
 class HabitNameInput(ui.input):
     def __init__(self, habit: Habit) -> None:
         super().__init__(value=habit.name, on_change=self._async_task)
         self.habit = habit
-        self.validation = self._validate
-        self.props("flat dense")
+        self.validation = lambda value: "Too long" if len(value) > 18 else None
+        self.props("dense")
 
     async def _async_task(self, e: events.ValueChangeEventArguments):
         self.habit.name = e.value
         logger.info(f"Habit Name changed to {e.value}")
-
-    def _validate(self, value: str) -> Optional[str]:
-        if not value:
-            return "Name is required"
-        if len(value) > 18:
-            return "Too long"
 
 
 class HabitStarCheckbox(ui.checkbox):
@@ -160,7 +147,6 @@ class HabitDateInput(ui.date):
         qdate_week_first_day = (settings.FIRST_DAY_OF_WEEK + 1) % 7
         self.props(f"first-day-of-week='{qdate_week_first_day}'")
         self.props("today-btn")
-        # self.props(f"subtitle='{habit.name}'")
         self.classes("shadow-none")
 
         self.bind_value_from(self, "ticked_days")
@@ -168,7 +154,6 @@ class HabitDateInput(ui.date):
     @property
     def ticked_days(self) -> list[str]:
         result = [k.strftime(DAY_MASK) for k, v in self.ticked_data.items() if v]
-        # workaround to disable auto focus
         result.append(TODAY)
         return result
 
@@ -177,28 +162,21 @@ class HabitDateInput(ui.date):
         new_values = set(strptime(x, DAY_MASK).date() for x in e.value if x != TODAY)
 
         for day in new_values - old_values:
-            # self.props(remove="default-date")
             self.props(f"default-year-month={day.strftime(MONTH_MASK)}")
             self.ticked_data[day] = True
-
             await self.habit.tick(day, True)
             logger.info(f"QDate day {day} ticked: True")
 
         for day in old_values - new_values:
-            # self.props(remove="default-date")
             self.props(f"default-year-month={day.strftime(MONTH_MASK)}")
             self.ticked_data[day] = False
-
             await self.habit.tick(day, False)
             logger.info(f"QDate day {day} ticked: False")
 
 
 @dataclass
 class CalendarHeatmap:
-    """Habit records by weeks"""
-
     today: datetime.date
-
     headers: list[str]
     data: list[list[datetime.date]]
     week_days: list[str]
@@ -210,7 +188,6 @@ class CalendarHeatmap:
         data = cls.generate_calendar_days(today, weeks, firstweekday)
         headers = cls.generate_calendar_headers(data[0])
         week_day_abbr = [calendar.day_abbr[(firstweekday + i) % 7] for i in range(7)]
-
         return cls(today, headers, data, week_day_abbr)
 
     @staticmethod
@@ -238,9 +215,8 @@ class CalendarHeatmap:
     def generate_calendar_days(
         today: datetime.date,
         total_weeks: int,
-        firstweekday: int = calendar.MONDAY,  # 0 = Monday, 6 = Sunday
+        firstweekday: int = calendar.MONDAY,
     ) -> list[list[datetime.date]]:
-        # Find the last day of the week
         lastweekday = (firstweekday - 1) % 7
         days_delta = (lastweekday - today.weekday()) % 7
         last_date_of_calendar = today + datetime.timedelta(days=days_delta)
@@ -290,10 +266,7 @@ class CalendarCheckBox(ui.checkbox):
         )
 
     async def _async_task(self, e: events.ValueChangeEventArguments):
-        # Update state data
         self.ticked_data[self.day] = e.value
-
-        # Update persistent storage
         await self.habit.tick(self.day, e.value)
         logger.info(f"Calendar Day {self.day} ticked: {e.value}")
 
@@ -305,28 +278,78 @@ def habit_heat_map(
 ):
     today = habit_calendar.today
 
-    # Bind to external state data
     is_bind_data = True
     if ticked_data is None:
         ticked_data = {x: True for x in habit.ticked_days}
         is_bind_data = False
 
-    # Headers
     with ui.row(wrap=False).classes("gap-0"):
         for header in habit_calendar.headers:
             header_lable = ui.label(header).classes("text-gray-300 text-center")
             header_lable.style("width: 20px; line-height: 18px; font-size: 9px;")
         ui.label().style("width: 22px;")
 
-    # Day matrix
     for i, weekday_days in enumerate(habit_calendar.data):
         with ui.row(wrap=False).classes("gap-0"):
             for day in weekday_days:
                 if day <= habit_calendar.today:
-                    CalendarCheckBox(habit, day, today, ticked_data, is_bind_data)
+                    checkbox = CalendarCheckBox(habit, day, today, ticked_data, is_bind_data)
+                    Draggable(checkbox)
                 else:
                     ui.label().style("width: 20px; height: 20px;")
 
             week_day_abbr_label = ui.label(habit_calendar.week_days[i])
             week_day_abbr_label.classes("indent-1.5 text-gray-300")
             week_day_abbr_label.style("width: 22px; line-height: 20px; font-size: 9px;")
+
+
+class HabitListManager:
+    def __init__(self, habit_list: HabitList, refresh: Callable):
+        self.habit_list = habit_list
+        self.refresh = refresh
+        self.habit_order: List[Habit] = []
+
+    def add_habit(self, habit: Habit):
+        self.habit_order.append(habit)
+        self.refresh()
+
+    def remove_habit(self, habit: Habit):
+        self.habit_order.remove(habit)
+        self.refresh()
+
+    def reorder_habits(self, new_order: List[Habit]):
+        self.habit_order = new_order
+        self.refresh()
+
+    def get_habits(self) -> List[Habit]:
+        return self.habit_order
+
+
+def habit_page(today: datetime.date, habit: Habit, habit_manager: HabitListManager):
+    ticked_data = {x: True for x in habit.ticked_days}
+    habit_calendar = CalendarHeatmap.build(today, WEEKS_TO_DISPLAY, calendar.MONDAY)
+
+    with ui.card().classes("p-3 gap-0 no-shadow items-center").style("max-width: 350px"):
+        HabitDateInput(today, habit, ticked_data)
+
+    with ui.card().classes("p-3 gap-0 no-shadow items-center").style("max-width: 350px"):
+        link("Last 3 Months", get_habit_heatmap_path(habit)).classes("text-base")
+        habit_heat_map(habit, habit_calendar, ticked_data=ticked_data)
+
+
+def habit_page_ui(today: datetime.date, habit_list: HabitList):
+    ui.add_css(CHECK_BOX_CSS)
+    ui.add_css(CALENDAR_CSS)
+
+    habit_manager = HabitListManager(habit_list, refresh=lambda: ui.refresh())
+
+    with layout(title="Habits"):
+        Droppable(
+            lambda dropped: habit_manager.reorder_habits(dropped),
+            lambda: [
+                habit_page(today, habit, habit_manager)
+                for habit in habit_manager.get_habits()
+            ],
+        )
+
+        HabitAddButton(habit_list, habit_manager.add_habit)
