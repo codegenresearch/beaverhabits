@@ -96,16 +96,16 @@ class DictHabit(Habit[DictRecord], DictStorage):
         Returns:
             DictHabit: A new DictHabit instance with merged records.
         """
-        new_records = {record.day: record for record in self.records}
+        records_set = {record.day: record for record in self.records}
         for other_record in other.records:
-            if other_record.day not in new_records:
-                new_records[other_record.day] = other_record
-            elif new_records[other_record.day].done != other_record.done:
-                new_records[other_record.day].done = other_record.done
+            if other_record.day not in records_set:
+                records_set[other_record.day] = other_record
+            elif records_set[other_record.day].done != other_record.done:
+                records_set[other_record.day].done = other_record.done
         merged_data = {
             "name": self.name,
             "star": self.star,
-            "records": [record.data for record in new_records.values()],
+            "records": [record.data for record in records_set.values()],
             "id": self.id
         }
         return DictHabit(merged_data)
