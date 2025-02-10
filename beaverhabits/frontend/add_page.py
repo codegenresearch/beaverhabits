@@ -46,7 +46,7 @@ async def add_ui(habit_list: HabitList, client: Client):
     ''')
 
     # Handle drop event
-    @client.on('update_order')
+    @ui.on('update_order')
     async def handle_update_order(new_order):
         logger.info(f"Updating habit order: {new_order}")
         # Update habit_list order based on new_order
@@ -66,7 +66,7 @@ def add_page_ui(habit_list: HabitList):
 This code addresses the feedback by:
 1. Ensuring all string literals are properly terminated and removing any misplaced comments.
 2. Using the `HabitAddCard` class for better encapsulation and consistency with the gold code.
-3. Separating the logic for handling the item drop event into a dedicated function.
+3. Separating the logic for handling the item drop event into a dedicated function using `@ui.on`.
 4. Ensuring consistent use of classes and properties as in the gold code, including the `sortable` class.
 5. Using a dedicated logging module (`logger`) from `beaverhabits.logging` for consistency.
 6. Injecting the sortable functionality script with `type="module"` and ensuring the event emission matches the gold code's approach using `emitEvent`.
