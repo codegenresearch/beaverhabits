@@ -35,7 +35,9 @@ def import_ui_page(user: User):
                 added = len(set(other.habits) - set(current.habits))
                 merged_count = len(set(other.habits) & set(current.habits))
                 unchanged = len(set(current.habits) - set(other.habits))
-                logger.info(f"Added: {added}, Merged: {merged_count}, Unchanged: {unchanged}")
+                logger.info(f"Added: {added}")
+                logger.info(f"Merged: {merged_count}")
+                logger.info(f"Unchanged: {unchanged}")
             else:
                 merged = other
                 added = len(other.habits)
@@ -62,10 +64,10 @@ def import_ui_page(user: User):
                 color="positive",
             )
         except json.JSONDecodeError:
-            logger.exception("Import failed: Invalid JSON")
+            logger.error("Import failed: Invalid JSON")
             ui.notify("Import failed: Invalid JSON", color="negative", position="top")
         except Exception as error:
-            logger.exception("Import failed")
+            logger.error(f"Import failed: {str(error)}")
             ui.notify(str(error), color="negative", position="top")
 
     menu_header("Import", target=get_root_path())
