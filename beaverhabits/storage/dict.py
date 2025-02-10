@@ -54,16 +54,10 @@ class DictHabit(Habit[DictRecord], DictStorage):
     star: bool = False
     records: List[DictRecord] = field(default_factory=list)
 
-    def __post_init__(self):
-        self.data = {
-            "id": generate_short_hash(self.name),
-            "name": self.name,
-            "star": self.star,
-            "records": [record.data for record in self.records]
-        }
-
     @property
     def id(self) -> str:
+        if "id" not in self.data:
+            self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
     @property
@@ -76,7 +70,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @property
     def star(self) -> bool:
-        return self.data["star"]
+        return self.data.get("star", False)
 
     @star.setter
     def star(self, value: bool) -> None:
@@ -84,7 +78,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @property
     def records(self) -> list[DictRecord]:
-        return [DictRecord(**d) for d in self.data["records"]]
+        return [DictRecord(**d) for d in self.data.get("records", [])]
 
     @records.setter
     def records(self, value: List[DictRecord]) -> None:
@@ -129,7 +123,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 
     @property
     def habits(self) -> list[DictHabit]:
-        return [DictHabit(**d) for d in self.data["habits"]]
+        return [DictHabit(**d) for d in self.data.get("habits", [])]
 
     @habits.setter
     def habits(self, value: List[DictHabit]) -> None:
@@ -137,7 +131,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 
     @property
     def order(self) -> List[str]:
-        return self.data["order"]
+        return self.data.get("order", [])
 
     @order.setter
     def order(self, value: List[str]) -> None:
