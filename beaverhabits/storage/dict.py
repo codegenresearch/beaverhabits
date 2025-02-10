@@ -70,8 +70,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
-        self.data["star"] = bool(value)
+    def star(self, value: bool) -> None:
+        self.data["star"] = value
 
     @property
     def records(self) -> list[DictRecord]:
@@ -83,7 +83,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @status.setter
     def status(self, value: HabitStatus) -> None:
-        self.data["status"] = value
+        self.data["status"] = value.value
 
     async def tick(self, day: datetime.date, done: bool) -> None:
         if record := next((r for r in self.records if r.day == day), None):
@@ -121,23 +121,21 @@ class DictHabit(Habit[DictRecord], DictStorage):
 class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
     def habits(self) -> list[DictHabit]:
-        habits = [DictHabit(d) for d in self.data["habits"]]
-
-        # Filter out habits with SOLF_DELETED status
-        active_habits = [habit for habit in habits if habit.status != HabitStatus.SOLF_DELETED]
+        valid_statuses = {HabitStatus.ACTIVE, HabitStatus.ARCHIVED}
+        habits = [DictHabit(d) for d in self.data["habits"] if HabitStatus(d.get("status", HabitStatus.ACTIVE.value)) in valid_statuses]
 
         # Sort by order and then by status
         if self.order:
-            active_habits.sort(
+            habits.sort(
                 key=lambda x: (
                     self.order.index(str(x.id))
                     if str(x.id) in self.order
                     else float("inf")
                 )
             )
-        active_habits.sort(key=lambda x: x.status.value)
+        habits.sort(key=lambda x: x.status.value)
 
-        return active_habits
+        return habits
 
     @property
     def order(self) -> List[str]:
@@ -151,10 +149,9 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
-        return None
 
     async def add(self, name: str) -> None:
-        d = {"name": name, "records": [], "id": generate_short_hash(name), "status": HabitStatus.ACTIVE}
+        d = {"name": name, "records": [], "id": generate_short_hash(name)}
         self.data["habits"].append(d)
 
     async def remove(self, item: DictHabit) -> None:
