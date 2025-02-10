@@ -22,7 +22,7 @@ class CheckedRecord(Protocol):
 
 class Habit[R: CheckedRecord](Protocol):
     @property
-    def id(self) -> str: ...
+    def id(self) -> str | int: ...
 
     @property
     def name(self) -> str: ...
@@ -34,7 +34,7 @@ class Habit[R: CheckedRecord](Protocol):
     def star(self) -> bool: ...
 
     @star.setter
-    def star(self, value: bool) -> None: ...
+    def star(self, value: int) -> None: ...
 
     @property
     def records(self) -> List[R]: ...
@@ -50,7 +50,7 @@ class Habit[R: CheckedRecord](Protocol):
         other_ticks = {r.day for r in other.records if r.done}
         merged_ticks = sorted(list(self_ticks | other_ticks))
         merged_records = [{"day": day, "done": True} for day in merged_ticks]
-        return type(self)(id=self.id, name=self.name, records=merged_records, star=self.star)
+        return type(self)(id=self.id, name=self.name, records=merged_records, star=bool(self.star))
 
     def __str__(self):
         return self.name
@@ -63,10 +63,9 @@ class HabitList[H: Habit](Protocol):
     @property
     def habits(self) -> List[H]: ...
 
-    async def add(self, name: str) -> H:
+    async def add(self, name: str) -> None:
         new_habit = type(self.habits[0])(id="", name=name, records=[], star=False)
         self.habits.append(new_habit)
-        return new_habit
 
     async def remove(self, item: H) -> None:
         self.habits = [habit for habit in self.habits if habit != item]
@@ -85,12 +84,14 @@ class HabitList[H: Habit](Protocol):
 
 
 class SessionStorage[L: HabitList](Protocol):
-    def retrieve_user_habit_list(self) -> Optional[L]: ...
+    def get_user_habit_list(self) -> Optional[L]: ...
 
-    def store_user_habit_list(self, habit_list: L) -> None: ...
+    def save_user_habit_list(self, habit_list: L) -> None: ...
 
 
 class UserStorage[L: HabitList](Protocol):
-    async def retrieve_user_habit_list(self, user: User) -> Optional[L]: ...
+    async def get_user_habit_list(self, user: User) -> Optional[L]: ...
 
-    async def store_user_habit_list(self, user: User, habit_list: L) -> None: ...
+    async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
+
+    async def merge_user_habit_list(self, user: User, other_habit_list: L) -> L: ...
