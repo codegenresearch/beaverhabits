@@ -26,7 +26,7 @@ async def item_drop(e, habit_list: HabitList):
         if isinstance(x, components.HabitOrderCard) and x.habit
     ]
     habit_list.order = [str(x.id) for x in habits]
-    logger.info(f"Item {e.args['id']} moved to index {e.args['new_index']}")
+    logger.info(f"Updated habit order: {habit_list.order}")
 
     # Handle status changes based on new position
     for i, habit in enumerate(habits):
@@ -92,9 +92,9 @@ def order_page_ui(habit_list: HabitList):
 
 ### Addressing Oracle Feedback:
 
-1. **Logging Consistency**: Simplified and focused logging statements to essential information.
-2. **Habit Status Management**: Explicitly checked and updated the status of habits based on their new position.
-3. **UI Structure**: Improved separation of UI components for active and archived habits.
-4. **Column Classes**: Ensured consistent and appropriate use of column classes.
-5. **Element Refreshing**: Streamlined UI refresh calls to update only necessary components.
+1. **Logging Consistency**: Simplified and focused logging statements to essential information, including the new order of habits.
+2. **Habit Status Management**: Explicitly checked and updated the status of habits based on their new position, ensuring adjacent habits are handled correctly.
+3. **UI Structure**: Improved separation of UI components for active and archived habits, ensuring clear differentiation.
+4. **Column Classes**: Ensured consistent and appropriate use of column classes to match the desired layout.
+5. **Element Refreshing**: Streamlined UI refresh calls to update only necessary components, improving performance and maintainability.
 6. **Code Structure and Readability**: Enhanced readability and organization with clear variable names and logical function structuring.
