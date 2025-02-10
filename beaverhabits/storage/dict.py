@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
 import datetime
-from typing import List, Optional
-
-from beaverhabits.storage.storage import CheckedRecord, HabitStatus, Habit, HabitList
+from typing import List
+from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList, HabitStatus
 from beaverhabits.utils import generate_short_hash
 
 DAY_MASK = "%Y-%m-%d"
@@ -47,15 +46,18 @@ class DictRecord(CheckedRecord, DictStorage):
 
 @dataclass
 class DictHabit(Habit[DictRecord], DictStorage):
+    def __init__(self, name: str, status: HabitStatus = HabitStatus.ACTIVE):
+        self.data = {
+            "name": name,
+            "status": status.value,
+            "records": [],
+            "id": generate_short_hash(name),
+            "star": False
+        }
+
     @property
     def id(self) -> str:
-        if "id" not in self.data:
-            self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
-
-    @id.setter
-    def id(self, value: str) -> None:
-        self.data["id"] = value
 
     @property
     def name(self) -> str:
@@ -67,23 +69,23 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @property
     def star(self) -> bool:
-        return self.data.get("star", False)
+        return self.data["star"]
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         self.data["star"] = value
-
-    @property
-    def status(self) -> HabitStatus:
-        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE))
-
-    @status.setter
-    def status(self, value: HabitStatus) -> None:
-        self.data["status"] = value
 
     @property
     def records(self) -> list[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
+
+    @property
+    def status(self) -> HabitStatus:
+        return HabitStatus(self.data["status"])
+
+    @status.setter
+    def status(self, value: HabitStatus) -> None:
+        self.data["status"] = value.value
 
     async def tick(self, day: datetime.date, done: bool) -> None:
         if record := next((r for r in self.records if r.day == day), None):
@@ -99,11 +101,14 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
         d = {
             "name": self.name,
+            "status": self.status.value,
             "records": [
                 {"day": day.strftime(DAY_MASK), "done": True} for day in result
             ],
+            "id": self.id,
+            "star": self.star
         }
-        return DictHabit(d)
+        return DictHabit(d.name, HabitStatus(d["status"]))
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, DictHabit) and self.id == other.id
@@ -112,50 +117,62 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return hash(self.id)
 
     def __str__(self) -> str:
-        return f"{self.name}<{self.id}>"
+        status_label = f"({self.status.name})" if self.status != HabitStatus.ACTIVE else ""
+        return f"{self.name}<{self.id}>{status_label}"
 
     __repr__ = __str__
 
 
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
+    def __init__(self, habits: List[DictHabit] = None, order: List[str] = None):
+        self.data = {
+            "habits": [habit.data for habit in habits] if habits else [],
+            "order": order if order else []
+        }
+
     @property
     def habits(self) -> list[DictHabit]:
-        habits = [DictHabit(d) for d in self.data["habits"]]
-        status = {HabitStatus.ACTIVE: 0, HabitStatus.ARCHIVED: 1}
-
-        # Filter out valid habits
-        habits = [x for x in habits if x.status in status]
+        habits = [DictHabit(d["name"], HabitStatus(d["status"])) for d in self.data["habits"]]
 
         # Sort by order
-        if o := self.order:
+        if self.order:
             habits.sort(
-                key=lambda x: (o.index(str(x.id)) if str(x.id) in o else float("inf"))
+                key=lambda x: (
+                    self.order.index(str(x.id))
+                    if str(x.id) in self.order
+                    else float("inf")
+                )
             )
-        # Sort by status
-        habits.sort(key=lambda x: status.get(x.status, float("inf")))
 
         return habits
 
     @property
     def order(self) -> List[str]:
-        return self.data.get("order", [])
+        return self.data["order"]
 
     @order.setter
     def order(self, value: List[str]) -> None:
         self.data["order"] = value
 
-    async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
+    async def get_habit_by(self, habit_id: str) -> DictHabit:
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        raise ValueError(f"Habit with id {habit_id} not found")
 
-    async def add(self, name: str) -> None:
-        d = {"name": name, "records": [], "id": generate_short_hash(name)}
+    async def add(self, name: str, status: HabitStatus = HabitStatus.ACTIVE) -> None:
+        d = {
+            "name": name,
+            "status": status.value,
+            "records": [],
+            "id": generate_short_hash(name),
+            "star": False
+        }
         self.data["habits"].append(d)
 
     async def remove(self, item: DictHabit) -> None:
-        self.data["habits"].remove(item.data)
+        self.data["habits"] = [h for h in self.data["habits"] if h["id"] != item.id]
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
         result = set(self.habits).symmetric_difference(set(other.habits))
@@ -167,4 +184,4 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
                     new_habit = await self_habit.merge(other_habit)
                     result.add(new_habit)
 
-        return DictHabitList({"habits": [h.data for h in result]})
+        return DictHabitList(list(result))
