@@ -27,21 +27,27 @@ def import_ui_page(user: User):
     async def handle_upload(e: events.UploadEventArguments):
         try:
             text = e.content.read().decode("utf-8")
-            other = await import_from_json(text)
-            current = await user_storage.get_user_habit_list(user)
+            to_habit_list = await import_from_json(text)
+            from_habit_list = await user_storage.get_user_habit_list(user)
 
-            if current:
-                merged = await current.merge(other)
-                added = set(other.habits) - set(current.habits)
-                unchanged = set(current.habits) - set(other.habits)
-                logger.info(f"Added: {len(added)}, Unchanged: {len(unchanged)}")
+            if from_habit_list:
+                merged_habit_list = await from_habit_list.merge(to_habit_list)
+                added_habits = set(to_habit_list.habits) - set(from_habit_list.habits)
+                unchanged_habits = set(from_habit_list.habits) - set(to_habit_list.habits)
+                merged_habits = set(to_habit_list.habits) & set(from_habit_list.habits)
+                logger.info(f"Added habits: {len(added_habits)}")
+                logger.info(f"Merged habits: {len(merged_habits)}")
+                logger.info(f"Unchanged habits: {len(unchanged_habits)}")
             else:
-                merged = other
-                added = set(other.habits)
-                logger.info(f"Added: {len(added)}")
+                merged_habit_list = to_habit_list
+                added_habits = set(to_habit_list.habits)
+                logger.info(f"Added habits: {len(added_habits)}")
 
             with ui.dialog() as dialog, ui.card().classes("w-64"):
-                ui.label(f"Are you sure? This will add {len(added)} new habits.")
+                message = f"Are you sure? This will add {len(added_habits)} new habits."
+                if from_habit_list:
+                    message += f" {len(merged_habits)} existing habits will be merged."
+                ui.label(message)
                 with ui.row():
                     ui.button("Yes", on_click=lambda: dialog.submit("Yes"))
                     ui.button("No", on_click=lambda: dialog.submit("No"))
@@ -50,9 +56,9 @@ def import_ui_page(user: User):
             if result != "Yes":
                 return
 
-            await user_storage.save_user_habit_list(user, merged)
+            await user_storage.save_user_habit_list(user, merged_habit_list)
             ui.notify(
-                f"Imported {len(other.habits)} habits",
+                f"Imported {len(to_habit_list.habits)} habits",
                 position="top",
                 color="positive",
             )
