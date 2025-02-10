@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import datetime
-from typing import list, Optional
+from typing import List, Optional
 
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList, HabitStatus
 from beaverhabits.utils import generate_short_hash
@@ -17,18 +17,7 @@ class DictStorage:
 @dataclass
 class DictRecord(CheckedRecord, DictStorage):
     """
-    # Read (d1~d3)
-    persistent    ->     memory      ->     view
-    d0: [x]              d0: [x]
-                                            d1: [ ]
-    d2: [x]              d2: [x]            d2: [x]
-                                            d3: [ ]
-
-    # Update:
-    view(update)  ->     memory      ->     persistent
-    d1: [ ]
-    d2: [ ]              d2: [ ]            d2: [x]
-    d3: [x]              d3: [x]            d3: [ ]
+    Represents a record of a habit's completion status for a specific day.
     """
 
     @property
@@ -74,20 +63,20 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
-        self.data["star"] = bool(value)
+    def star(self, value: bool) -> None:
+        self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
     @property
     def status(self) -> HabitStatus:
-        return self.data.get("status", HabitStatus.ACTIVE)
+        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE.value))
 
     @status.setter
     def status(self, value: HabitStatus) -> None:
-        self.data["status"] = value
+        self.data["status"] = value.value
 
     async def tick(self, day: datetime.date, done: bool) -> None:
         """
@@ -134,11 +123,11 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     """
 
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         """
         Returns a list of habits, filtered and sorted by status and order.
         """
-        valid_statuses = {HabitStatus.ACTIVE: 1, HabitStatus.ARCHIVED: 2}
+        valid_statuses = {HabitStatus.ACTIVE, HabitStatus.ARCHIVED}
         habits = [DictHabit(d) for d in self.data["habits"] if d.get("status", HabitStatus.ACTIVE) in valid_statuses]
 
         # Sort by order and then by status
@@ -146,18 +135,18 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         habits.sort(
             key=lambda x: (
                 o.index(str(x.id)) if str(x.id) in o else float("inf"),
-                valid_statuses.get(x.status, float("inf"))
+                x.status.value
             )
         )
 
         return habits
 
     @property
-    def order(self) -> list[str]:
+    def order(self) -> List[str]:
         return self.data.get("order", [])
 
     @order.setter
-    def order(self, value: list[str]) -> None:
+    def order(self, value: List[str]) -> None:
         self.data["order"] = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
