@@ -1,6 +1,5 @@
 import datetime
 import json
-import logging
 import random
 import time
 from typing import List
@@ -15,9 +14,8 @@ from beaverhabits.storage.storage import Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 
 user_storage = get_user_dict_storage()
-logger = logging.getLogger(__name__)
 
-def dummy_habit_list(days: List[datetime.date]) -> HabitList:
+def dummy_habit_list(days: List[datetime.date]):
     pick = lambda: random.randint(0, 3) == 0
     items = [
         {
@@ -31,11 +29,12 @@ def dummy_habit_list(days: List[datetime.date]) -> HabitList:
     ]
     return DictHabitList({"habits": items})
 
-def get_session_habit_list() -> HabitList | None:
+def get_session_habit_list():
     return session_storage.get_user_habit_list()
 
-async def get_session_habit(habit_id: str) -> Habit:
-    if (habit_list := get_session_habit_list()) is None:
+async def get_session_habit(habit_id: str):
+    habit_list = get_session_habit_list()
+    if habit_list is None:
         raise HTTPException(status_code=404, detail="Habit list not found")
 
     habit = await habit_list.get_habit_by(habit_id)
@@ -44,19 +43,21 @@ async def get_session_habit(habit_id: str) -> Habit:
 
     return habit
 
-def get_or_create_session_habit_list(days: List[datetime.date]) -> HabitList:
-    if (habit_list := get_session_habit_list()) is not None:
+def get_or_create_session_habit_list(days: List[datetime.date]):
+    habit_list = get_session_habit_list()
+    if habit_list is not None:
         return habit_list
 
     habit_list = dummy_habit_list(days)
     session_storage.save_user_habit_list(habit_list)
     return habit_list
 
-async def get_user_habit_list(user: User) -> HabitList | None:
+async def get_user_habit_list(user: User):
     return await user_storage.get_user_habit_list(user)
 
-async def get_user_habit(user: User, habit_id: str) -> Habit:
-    if (habit_list := await get_user_habit_list(user)) is None:
+async def get_user_habit(user: User, habit_id: str):
+    habit_list = await get_user_habit_list(user)
+    if habit_list is None:
         raise HTTPException(status_code=404, detail="Habit list not found")
 
     habit = await habit_list.get_habit_by(habit_id)
@@ -65,15 +66,19 @@ async def get_user_habit(user: User, habit_id: str) -> Habit:
 
     return habit
 
-async def get_or_create_user_habit_list(user: User, days: List[datetime.date]) -> HabitList:
-    if (habit_list := await get_user_habit_list(user)) is not None:
+async def get_or_create_user_habit_list(
+    user: User,
+    days: List[datetime.date]
+):
+    habit_list = await get_user_habit_list(user)
+    if habit_list is not None:
         return habit_list
 
     habit_list = dummy_habit_list(days)
     await user_storage.save_user_habit_list(user, habit_list)
     return habit_list
 
-async def export_user_habit_list(habit_list: HabitList, user_identify: str) -> None:
+async def export_user_habit_list(habit_list: HabitList, user_identify: str):
     # json to binary
     if isinstance(habit_list, DictHabitList):
         data = {
@@ -87,10 +92,11 @@ async def export_user_habit_list(habit_list: HabitList, user_identify: str) -> N
     else:
         ui.notification("Export failed, please try again later.")
 
-async def merge_user_habit_lists(user: User, other_habit_list: HabitList) -> HabitList:
-    if (user_habit_list := await get_user_habit_list(user)) is None:
-        user_habit_list = dummy_habit_list([])
-        await user_storage.save_user_habit_list(user, user_habit_list)
+async def merge_user_habit_lists(user: User, other_habit_list: HabitList):
+    habit_list = await get_user_habit_list(user)
+    if habit_list is None:
+        habit_list = dummy_habit_list([])
+        await user_storage.save_user_habit_list(user, habit_list)
 
     merged_habit_list = await user_storage.merge_user_habit_list(user, other_habit_list)
     await user_storage.save_user_habit_list(user, merged_habit_list)
