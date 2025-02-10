@@ -6,7 +6,6 @@ from beaverhabits.utils import generate_short_hash
 from pydantic import BaseModel, validator
 
 DAY_MASK = "%Y-%m-%d"
-MONTH_MASK = "%Y/%m"
 
 @dataclass(init=False)
 class DictStorage:
@@ -19,10 +18,6 @@ class DictStorage:
 class DictRecord(CheckedRecord, DictStorage):
     """
     Represents a single record of a habit, including the day and completion status.
-
-    The data dictionary contains:
-    - 'day': A string representing the date in the format 'YYYY-MM-DD'.
-    - 'done': A boolean indicating whether the habit was completed on that day.
     """
 
     @property
@@ -44,12 +39,6 @@ class DictRecord(CheckedRecord, DictStorage):
 class DictHabit(Habit[DictRecord], DictStorage):
     """
     Represents a habit with a name, star status, and a list of records.
-
-    The data dictionary contains:
-    - 'name': A string representing the name of the habit.
-    - 'star': A boolean indicating whether the habit is starred.
-    - 'records': A list of dictionaries representing the records of the habit.
-    - 'id': A string representing the unique identifier of the habit.
     """
 
     @property
@@ -76,16 +65,16 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @property
     def star(self) -> bool:
-        """Returns the star status of the habit as a boolean."""
+        """Returns the star status of the habit."""
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         """Sets the star status of the habit."""
-        self.data["star"] = bool(value)
+        self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         """Returns a list of records associated with the habit."""
         return [DictRecord(d) for d in self.data["records"]]
 
@@ -97,10 +86,10 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
 
     async def merge(self, other: "DictHabit") -> "DictHabit":
-        """Merges the records of this habit with another habit and returns the merged data."""
+        """Merges the records of this habit with another habit."""
         self_ticks = {r.day for r in self.records if r.done}
         other_ticks = {r.day for r in other.records if r.done}
-        merged_ticks = sorted(list(self_ticks | other_ticks))
+        merged_ticks = sorted(self_ticks | other_ticks)
         merged_data = {
             "name": self.name,
             "records": [{"day": day.strftime(DAY_MASK), "done": True} for day in merged_ticks],
@@ -118,8 +107,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return hash(self.id)
 
     def __str__(self) -> str:
-        """Returns a string representation of the habit including its ID."""
-        return f"{self.name} {'[x]' if self.star else '[ ]'} (ID: {self.id})"
+        """Returns a string representation of the habit."""
+        return f"{self.name} {'[x]' if self.star else '[ ]'}"
 
     __repr__ = __str__
 
@@ -127,14 +116,10 @@ class DictHabit(Habit[DictRecord], DictStorage):
 class DictHabitList(HabitList[DictHabit], DictStorage):
     """
     Manages a list of habits with methods to add, remove, and merge habits.
-
-    The data dictionary contains:
-    - 'habits': A list of dictionaries representing the habits.
-    - 'order': A list of strings representing the order of the habits.
     """
 
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         """Returns a list of habits sorted by order and star status."""
         habits = [DictHabit(d) for d in self.data["habits"]]
         order = self.data.get("order", [])
@@ -142,12 +127,12 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return habits
 
     @property
-    def order(self) -> list[str]:
+    def order(self) -> List[str]:
         """Returns the order of habits."""
         return self.data.get("order", [])
 
     @order.setter
-    def order(self, value: list[str]) -> None:
+    def order(self, value: List[str]) -> None:
         """Sets the order of habits."""
         self.data["order"] = value
 
@@ -156,6 +141,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
         """Adds a new habit to the list."""
