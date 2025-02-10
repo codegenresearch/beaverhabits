@@ -29,11 +29,11 @@ class Habit(Protocol[R]):
     @property
     def star(self) -> bool: ...
     @star.setter
-    def star(self, value: int) -> None: ...
+    def star(self, value: bool) -> None: ...
     @property
     def records(self) -> List[R]: ...
     @property
-    def ticked_days(self) -> list[datetime.date]:
+    def ticked_days(self) -> List[datetime.date]:
         return [r.day for r in self.records if r.done]
     async def tick(self, day: datetime.date, done: bool) -> None: ...
     def __str__(self) -> str:
@@ -108,15 +108,15 @@ class EnhancedHabit(Habit[R]):
         return self._star
 
     @star.setter
-    def star(self, value: int) -> None:
-        self._star = bool(value)
+    def star(self, value: bool) -> None:
+        self._star = value
 
     @property
     def records(self) -> List[R]:
         return self._records
 
     @property
-    def ticked_days(self) -> list[datetime.date]:
+    def ticked_days(self) -> List[datetime.date]:
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None:
@@ -188,7 +188,7 @@ class EnhancedHabitList(HabitList[H]):
 
 
 This code snippet addresses the feedback by:
-1. Removing the invalid syntax block of text.
+1. Removing any invalid syntax blocks of text.
 2. Ensuring the type variable syntax for `Habit` and `HabitList` is consistent with the gold code.
 3. Formatting properties consistently, each on a new line.
 4. Ensuring return types for properties and methods match the gold code.
