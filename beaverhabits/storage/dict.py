@@ -28,10 +28,6 @@ class DictRecord(CheckedRecord, DictStorage):
     def day(self) -> datetime.date:
         return datetime.datetime.strptime(self.data["day"], DAY_MASK).date()
 
-    @day.setter
-    def day(self, value: datetime.date) -> None:
-        self.data["day"] = value.strftime(DAY_MASK)
-
     @property
     def done(self) -> bool:
         return self.data["done"]
@@ -59,14 +55,15 @@ class DictHabit(Habit[DictRecord], DictStorage):
     records: List[DictRecord] = field(default_factory=list)
 
     def __post_init__(self):
-        self.data["name"] = self.name
-        self.data["star"] = self.star
-        self.data["records"] = [record.data for record in self.records]
+        self.data = {
+            "id": generate_short_hash(self.name),
+            "name": self.name,
+            "star": self.star,
+            "records": [record.data for record in self.records]
+        }
 
     @property
     def id(self) -> str:
-        if "id" not in self.data:
-            self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
     @property
@@ -89,10 +86,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
     def records(self) -> list[DictRecord]:
         return [DictRecord(**d) for d in self.data["records"]]
 
-    @records.setter
-    def records(self, value: List[DictRecord]) -> None:
-        self.data["records"] = [record.data for record in value]
-
     async def tick(self, day: datetime.date, done: bool) -> None:
         if record := next((r for r in self.records if r.day == day), None):
             record.done = done
@@ -105,10 +98,10 @@ class DictHabit(Habit[DictRecord], DictStorage):
         other_ticks = {r.day for r in other.records if r.done}
         result = sorted(list(self_ticks | other_ticks))
 
-        self.data["records"] = [
+        new_records = [
             {"day": day.strftime(DAY_MASK), "done": True} for day in result
         ]
-        return self
+        return DictHabit(name=self.name, star=self.star, records=[DictRecord(**r) for r in new_records])
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, DictHabit) and self.id == other.id
@@ -117,7 +110,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return hash(self.id)
 
     def __str__(self):
-        return self.name
+        return f"{self.id}: {self.name}"
 
 
 @dataclass
@@ -126,14 +119,14 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     order: List[str] = field(default_factory=list)
 
     def __post_init__(self):
-        self.data["habits"] = [habit.data for habit in self.habits]
-        self.data["order"] = self.order
+        self.data = {
+            "habits": [habit.data for habit in self.habits],
+            "order": self.order
+        }
 
     @property
     def habits(self) -> list[DictHabit]:
-        habits = [DictHabit(**d) for d in self.data["habits"]]
-        habits.sort(key=lambda x: x.star, reverse=True)
-        return habits
+        return [DictHabit(**d) for d in self.data["habits"]]
 
     @habits.setter
     def habits(self, value: List[DictHabit]) -> None:
@@ -155,7 +148,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     async def add(self, name: str) -> None:
         new_habit = DictHabit(name=name)
         self.habits.append(new_habit)
-        self.data["habits"] = [habit.data for habit in self.habits]
+        self.data["habits"].append(new_habit.data)
         self.order.append(new_habit.id)
         self.data["order"] = self.order
 
