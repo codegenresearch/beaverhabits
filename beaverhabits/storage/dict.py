@@ -53,11 +53,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
             "records": [],
             "star": False
         }
-        if "id" not in self.data:
-            self.data["id"] = generate_short_hash(name)
 
     @property
     def id(self) -> str:
+        if "id" not in self.data:
+            self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
     @property
@@ -73,8 +73,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: bool) -> None:
-        self.data["star"] = value
+    def star(self, value: int) -> None:
+        self.data["star"] = bool(value)
 
     @property
     def records(self) -> list[DictRecord]:
@@ -111,12 +111,24 @@ class DictHabit(Habit[DictRecord], DictStorage):
         }
         return DictHabit(d["name"], HabitStatus(d["status"]))
 
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, DictHabit) and self.id == other.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __str__(self) -> str:
+        status_label = f"({self.status.name})" if self.status != HabitStatus.ACTIVE else ""
+        return f"{self.name}{status_label}"
+
+    __repr__ = __str__
+
 
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
     def __init__(self, habits: List[dict] = None, order: List[str] = None):
         self.data = {
-            "habits": [DictHabit(h["name"], HabitStatus(h["status"])).data for h in habits] if habits else [],
+            "habits": [DictHabit(h["name"], HabitStatus(h.get("status", HabitStatus.ACTIVE.value))).data for h in habits] if habits else [],
             "order": order if order else []
         }
 
@@ -148,12 +160,11 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
-        return None
 
-    async def add(self, name: str, status: HabitStatus = HabitStatus.ACTIVE) -> None:
+    async def add(self, name: str) -> None:
         d = {
             "name": name,
-            "status": status.value,
+            "status": HabitStatus.ACTIVE.value,
             "records": [],
             "id": generate_short_hash(name),
             "star": False
