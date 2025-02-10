@@ -19,7 +19,7 @@ async def item_drop(e, habit_list: HabitList):
     dragged = elements[int(e.args["id"][1:])]
     dragged.move(target_index=e.args["new_index"])
 
-    # Update habit order and status
+    # Update habit order
     assert dragged.parent_slot is not None
     habits = [
         x.habit
@@ -30,12 +30,12 @@ async def item_drop(e, habit_list: HabitList):
 
     # Determine the status of the dragged habit based on neighboring habits
     dragged_index = habit_list.order.index(str(dragged.habit.id))
-    if dragged_index == 0 or habits[dragged_index - 1].status == HabitStatus.ACTIVE:
+    if dragged_index == 0 or (dragged_index > 0 and habits[dragged_index - 1].status == HabitStatus.ACTIVE):
         dragged.habit.status = HabitStatus.ACTIVE
     else:
         dragged.habit.status = HabitStatus.INACTIVE
 
-    logger.info(f"Dropped item {dragged.habit.id} to index {e.args['new_index']}. New order: {habit_list.order}")
+    logger.info(f"Dropped habit {dragged.habit.id} to index {e.args['new_index']}")
     add_ui.refresh()
 
 
