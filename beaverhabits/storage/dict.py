@@ -83,14 +83,14 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["name"] = value
 
     @property
-    def star(self) -> int:
+    def star(self) -> bool:
         """
         Returns the star status of the habit.
         """
-        return self.data.get("star", 0)
+        return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         """
         Sets the star status of the habit.
         """
@@ -119,7 +119,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """
         self_days = {record.day for record in self.records if record.done}
         other_days = {record.day for record in other.records if record.done}
-        combined_days = self_days.union(other_days)
+        combined_days = sorted(self_days.union(other_days))
         combined_records = [
             {"day": day.strftime(DAY_MASK), "done": True} for day in combined_days
         ]
@@ -127,7 +127,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
             "name": self.name,
             "records": combined_records,
             "id": self.id,
-            "star": max(self.star, other.star)
+            "star": self.star or other.star
         })
 
     def __eq__(self, other: object) -> bool:
@@ -172,7 +172,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         """
         Adds a new habit to the list.
         """
-        d = {"name": name, "records": [], "id": generate_short_hash(name), "star": 0}
+        d = {"name": name, "records": [], "id": generate_short_hash(name)}
         self.data["habits"].append(d)
 
     async def remove(self, item: DictHabit) -> None:
