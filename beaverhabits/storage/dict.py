@@ -28,8 +28,7 @@ class DictRecord(CheckedRecord, DictStorage):
         """
         Returns the day of the record as a datetime.date object.
         """
-        date = datetime.datetime.strptime(self.data["day"], DAY_MASK)
-        return date.date()
+        return datetime.datetime.strptime(self.data["day"], DAY_MASK).date()
 
     @property
     def done(self) -> bool:
@@ -61,13 +60,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
-    @id.setter
-    def id(self, value: str) -> None:
-        """
-        Sets the unique identifier of the habit.
-        """
-        self.data["id"] = value
-
     @property
     def name(self) -> str:
         """
@@ -97,7 +89,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         """
         Returns a list of records associated with the habit.
         """
@@ -110,8 +102,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         if record := next((r for r in self.records if r.day == day), None):
             record.done = done
         else:
-            data = {"day": day.strftime(DAY_MASK), "done": done}
-            self.data["records"].append(data)
+            self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
 
     def merge(self, other: 'DictHabit') -> 'DictHabit':
         """
@@ -152,7 +143,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     """
 
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         """
         Returns a sorted list of habits based on their star status.
         """
@@ -167,6 +158,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
         """
@@ -179,7 +171,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         """
         Removes a habit from the list.
         """
-        self.data["habits"].remove(item.data)
+        self.data["habits"] = [h for h in self.data["habits"] if h["id"] != item.id]
 
     def merge(self, other: 'DictHabitList') -> 'DictHabitList':
         """
