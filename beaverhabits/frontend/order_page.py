@@ -32,7 +32,8 @@ async def item_drop(e, habit_list: HabitList):
             habit.status = HabitStatus.ACTIVE
         else:
             habit.status = HabitStatus.INACTIVE
-    logger.info(f"Item {dragged.id} dropped to new index {e.args['new_index']}. New order: {habits}")
+    logger.info(f"Dropped item {dragged.id} to index {e.args['new_index']}")
+    add_ui.refresh()
 
 
 @ui.refreshable
@@ -44,7 +45,7 @@ def add_ui(habit_list: HabitList):
                     if item.status == HabitStatus.ACTIVE:
                         name = HabitNameInput(item)
                     else:
-                        name = ui.label(item.name).classes("col-span-3 col-3")
+                        name = ui.label(item.name)
                     name.classes("col-span-3 col-3")
                     name.props("borderless")
 
