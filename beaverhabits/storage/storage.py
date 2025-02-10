@@ -25,7 +25,7 @@ class CheckedRecord(Protocol):
 
 class Habit(Generic[R], Protocol):
     @property
-    def id(self) -> Union[str, int]: ...
+    def id(self) -> str | int: ...
 
     @property
     def name(self) -> str: ...
@@ -58,11 +58,17 @@ class HabitList(Generic[H], Protocol):
     @property
     def habits(self) -> List[H]: ...
 
+    @property
+    def order(self) -> List[str]: ...
+
+    @order.setter
+    def order(self, value: List[str]) -> None: ...
+
     async def add(self, name: str) -> None: ...
 
     async def remove(self, item: H) -> None: ...
 
-    async def get_habit_by(self, habit_id: Union[str, int]) -> Optional[H]: ...
+    async def get_habit_by(self, habit_id: str | int) -> Optional[H]: ...
 
     async def merge(self, other: 'HabitList[H]') -> 'HabitList[H]': ...
 
@@ -173,7 +179,7 @@ class EnhancedHabitList(HabitList[EnhancedHabit]):
     async def remove(self, item: EnhancedHabit) -> None:
         self._habits.remove(item)
 
-    async def get_habit_by(self, habit_id: Union[str, int]) -> Optional[EnhancedHabit]:
+    async def get_habit_by(self, habit_id: str | int) -> Optional[EnhancedHabit]:
         for habit in self._habits:
             if habit.id == habit_id:
                 return habit
