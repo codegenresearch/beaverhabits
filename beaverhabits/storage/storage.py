@@ -108,14 +108,16 @@ class UserStorage[L: HabitList](Protocol):
     async def merge_user_habit_list(self, user: User, other: L) -> L:
         user_habit_list = await self.get_user_habit_list(user)
         if user_habit_list:
-            # Assuming merge logic is handled elsewhere or not needed
-            merged_habits = set(user_habit_list.habits).symmetric_difference(set(other.habits))
+            result = set(user_habit_list.habits).symmetric_difference(set(other.habits))
+
+            # Merge the habit if it exists
             for self_habit in user_habit_list.habits:
                 for other_habit in other.habits:
                     if self_habit == other_habit:
                         new_habit = await self_habit.merge(other_habit)
-                        merged_habits.add(new_habit)
-            return type(user_habit_list)({"habits": [h.data for h in merged_habits]})
+                        result.add(new_habit)
+
+            return type(user_habit_list)({"habits": [h.data for h in result]})
         else:
             await self.save_user_habit_list(user, other)
             return other
