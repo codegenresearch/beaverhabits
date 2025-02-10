@@ -122,7 +122,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         """Returns the hash of the habit based on its ID."""
         return hash(self.id)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns the string representation of the habit including its ID."""
         return f"{self.name}<{self.id}>"
 
@@ -201,7 +201,7 @@ class HabitCreate(BaseModel):
     name: str
 
     @validator('name')
-    def name_must_not_be_empty(cls, v):
+    def name_must_not_be_empty(cls, v: str) -> str:
         """Validates that the habit name is not empty."""
         if not v.strip():
             raise ValueError('Habit name cannot be empty.')
