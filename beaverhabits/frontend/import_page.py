@@ -15,7 +15,7 @@ from beaverhabits.views import user_storage
 logger = logging.getLogger(__name__)
 
 
-def import_from_json(json_text: str) -> HabitList:
+async def import_from_json(json_text: str) -> HabitList:
     try:
         data = json.loads(json_text)
         habit_list = DictHabitList(data)
@@ -33,43 +33,42 @@ def import_from_json(json_text: str) -> HabitList:
 def import_ui_page(user: User):
     async def handle_file_upload(event: events.UploadEventArguments):
         try:
-            file_content = event.content.read().decode("utf-8")
-            imported_habit_list = import_from_json(file_content)
-            current_habit_list = await user_storage.get_user_habit_list(user)
+            text = event.content.read().decode("utf-8")
+            other = await import_from_json(text)
+            current = await user_storage.get_user_habit_list(user)
 
-            if current_habit_list:
-                merged_habit_list = await current_habit_list.merge(imported_habit_list)
-                added_habits = set(habit.id for habit in imported_habit_list.habits) - set(habit.id for habit in current_habit_list.habits)
-                merged_habits = set(habit.id for habit in imported_habit_list.habits).intersection(set(habit.id for habit in current_habit_list.habits))
-                unchanged_habits = set(habit.id for habit in current_habit_list.habits) - set(habit.id for habit in imported_habit_list.habits)
+            if current:
+                merged = await current.merge(other)
+                added = set(habit.id for habit in other.habits) - set(habit.id for habit in current.habits)
+                merged_ids = set(habit.id for habit in other.habits).intersection(set(habit.id for habit in current.habits))
+                unchanged = set(habit.id for habit in current.habits) - set(habit.id for habit in other.habits)
 
-                logger.info(f"Imported habits: {len(imported_habit_list.habits)}")
-                logger.info(f"Added habits: {len(added_habits)}")
-                logger.info(f"Merged habits: {len(merged_habits)}")
-                logger.info(f"Unchanged habits: {len(unchanged_habits)}")
+                logger.info(f"Imported habits: {len(other.habits)}")
+                logger.info(f"Added habits: {len(added)}")
+                logger.info(f"Merged habits: {len(merged_ids)}")
+                logger.info(f"Unchanged habits: {len(unchanged)}")
 
                 message = (
-                    f"Imported {len(imported_habit_list.habits)} habits. "
-                    f"Added: {len(added_habits)}, Merged: {len(merged_habits)}, Unchanged: {len(unchanged_habits)}"
+                    f"Imported {len(other.habits)} habits. "
+                    f"Added: {len(added)}, Merged: {len(merged_ids)}, Unchanged: {len(unchanged)}"
                 )
             else:
-                merged_habit_list = imported_habit_list
-                message = f"Imported {len(imported_habit_list.habits)} new habits."
+                merged = other
+                message = f"Imported {len(other.habits)} new habits."
 
-            with ui.dialog() as confirmation_dialog, ui.card().classes("w-64"):
+            with ui.dialog() as dialog, ui.card().classes("w-64"):
                 ui.label(message)
                 with ui.row():
-                    ui.button("Yes", on_click=lambda: confirmation_dialog.submit("Yes"))
-                    ui.button("No", on_click=lambda: confirmation_dialog.submit("No"))
+                    ui.button("Yes", on_click=lambda: dialog.submit("Yes"))
+                    ui.button("No", on_click=lambda: dialog.submit("No"))
 
-            user_response = await confirmation_dialog
-            if user_response == "Yes":
-                await user_storage.save_user_habit_list(user, merged_habit_list)
-                ui.notify(message, position="top", color="positive")
-            else:
+            response = await dialog
+            if response != "Yes":
                 ui.notify("Import cancelled.", position="top", color="info")
-        except json.JSONDecodeError:
-            ui.notify("Import failed: Invalid JSON format.", color="negative", position="top")
+                return
+
+            await user_storage.save_user_habit_list(user, merged)
+            ui.notify(message, position="top", color="positive")
         except Exception as e:
             logger.exception("An error occurred during the import process.")
             ui.notify(f"Import failed: {str(e)}", color="negative", position="top")
