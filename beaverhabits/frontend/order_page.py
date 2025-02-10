@@ -9,10 +9,10 @@ from beaverhabits.frontend.components import (
 )
 from beaverhabits.frontend.layout import layout
 from beaverhabits.logging import logger
-from beaverhabits.storage.storage import HabitList, DictHabit, DictHabitList
+from beaverhabits.storage.storage import HabitList
 
 
-async def item_drop(e, habit_list: DictHabitList):
+async def item_drop(e, habit_list: HabitList):
     # Move element
     elements = ui.context.client.elements
     dragged = elements[int(e.args["id"][1:])]
@@ -26,11 +26,20 @@ async def item_drop(e, habit_list: DictHabitList):
         if isinstance(x, components.HabitOrderCard) and x.habit
     ]
     habit_list.order = [str(x.id) for x in habits]
-    logger.info(f"New order: {habits}")
+    logger.info(f"Item dropped: id={e.args['id']}, new_index={e.args['new_index']}, new_order={habits}")
+
+    # Handle status changes based on new position
+    for habit in habits:
+        if habit_list.index(habit) < len(habits) - 1:
+            habit.status = 'active'
+        else:
+            habit.status = 'archived'
+
+    add_ui.refresh()
 
 
 @ui.refreshable
-def add_ui(habit_list: DictHabitList):
+def add_ui(habit_list: HabitList):
     with ui.column().classes("sortable").classes("gap-3"):
         for item in habit_list.get_habits_by_status('active'):
             with components.HabitOrderCard(item):
@@ -48,7 +57,7 @@ def add_ui(habit_list: DictHabitList):
                     delete.classes("col-span-1")
 
 
-def order_page_ui(habit_list: DictHabitList):
+def order_page_ui(habit_list: HabitList):
     with layout():
         with ui.column().classes("w-full pl-1 items-center gap-3"):
             add_ui(habit_list)
