@@ -19,19 +19,6 @@ class DictStorage:
 class DictRecord(CheckedRecord, DictStorage):
     """
     Represents a single record of a habit with a specific day and completion status.
-
-    # Read (d1~d3)
-    persistent    ->     memory      ->     view
-    d0: [x]              d0: [x]
-                                            d1: [ ]
-    d2: [x]              d2: [x]            d2: [x]
-                                            d3: [ ]
-
-    # Update:
-    view(update)  ->     memory      ->     persistent
-    d1: [ ]
-    d2: [ ]              d2: [ ]            d2: [x]
-    d3: [x]              d3: [x]            d3: [ ]
     """
 
     @property
@@ -88,7 +75,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = value
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         """Returns the list of records associated with the habit."""
         return [DictRecord(d) for d in self.data["records"]]
 
@@ -97,7 +84,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         Updates the completion status of a record for a specific day.
         If the record does not exist, it creates a new one.
         """
-        if (record := next((r for r in self.records if r.day == day), None)) is not None:
+        record = next((r for r in self.records if r.day == day), None)
+        if record:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
@@ -141,7 +129,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         """
         habits = [DictHabit(d) for d in self.data["habits"]]
         if self.order:
-            habits.sort(key=lambda x: (not x.star, self.order.index(x.id)))
+            habits.sort(key=lambda x: (not x.star, self.order.index(x.id) if x.id in self.order else float('inf')))
         else:
             habits.sort(key=lambda x: not x.star)
         return habits
