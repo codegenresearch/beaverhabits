@@ -1,8 +1,10 @@
 import datetime
-from typing import List, Optional, Protocol
+from typing import List, Optional, Protocol, TypeVar, Union
 
 from beaverhabits.app.db import User
 
+R = TypeVar('R', bound=CheckedRecord)
+H = TypeVar('H', bound=Habit)
 
 class CheckedRecord(Protocol):
     @property
@@ -23,9 +25,9 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit(Protocol[R: CheckedRecord]):
+class Habit(Protocol[R]):
     @property
-    def id(self) -> str:
+    def id(self) -> Union[str, int]:
         ...
 
     @property
@@ -37,11 +39,11 @@ class Habit(Protocol[R: CheckedRecord]):
         ...
 
     @property
-    def star(self) -> bool:
+    def star(self) -> int:
         ...
 
     @star.setter
-    def star(self, value: bool) -> None:
+    def star(self, value: int) -> None:
         ...
 
     @property
@@ -49,7 +51,7 @@ class Habit(Protocol[R: CheckedRecord]):
         ...
 
     @property
-    def ticked_days(self) -> List[datetime.date]:
+    def ticked_days(self) -> list[datetime.date]:
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None:
@@ -61,7 +63,7 @@ class Habit(Protocol[R: CheckedRecord]):
     __repr__ = __str__
 
 
-class HabitList(Protocol[H: Habit]):
+class HabitList(Protocol[H]):
     @property
     def habits(self) -> List[H]:
         ...
