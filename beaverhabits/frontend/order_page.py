@@ -1,11 +1,11 @@
 from nicegui import ui
 
-from beaverhabits.frontend import components
 from beaverhabits.frontend.components import (
     HabitAddButton,
     HabitDeleteButton,
     HabitNameInput,
     HabitStarCheckbox,
+    HabitOrderCard,
 )
 from beaverhabits.frontend.layout import layout
 from beaverhabits.logging import logger
@@ -24,12 +24,18 @@ async def item_drop(e, habit_list: HabitList):
     habits = [
         x.habit
         for x in dragged.parent_slot.children
-        if isinstance(x, components.HabitOrderCard) and x.habit
+        if isinstance(x, HabitOrderCard) and x.habit
     ]
     habit_list.order = [str(x.id) for x in habits]
-    for habit in habits:
-        habit.status = HabitStatus.ACTIVE
-    logger.info(f"Dropped item {dragged.id} to index {e.args['new_index']}. New order: {habit_list.order}")
+
+    # Determine the status of the dragged habit based on neighboring habits
+    dragged_index = habit_list.order.index(str(dragged.habit.id))
+    if dragged_index == 0 or habits[dragged_index - 1].status == HabitStatus.ACTIVE:
+        dragged.habit.status = HabitStatus.ACTIVE
+    else:
+        dragged.habit.status = HabitStatus.INACTIVE
+
+    logger.info(f"Dropped item {dragged.habit.id} to index {e.args['new_index']}. New order: {habit_list.order}")
     add_ui.refresh()
 
 
@@ -37,7 +43,7 @@ async def item_drop(e, habit_list: HabitList):
 def add_ui(habit_list: HabitList):
     with ui.column().classes("sortable gap-3"):
         for item in sorted(habit_list.habits, key=lambda x: (x.star, x.status == HabitStatus.INACTIVE)):
-            with components.HabitOrderCard(item):
+            with HabitOrderCard(item):
                 with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
                     if item.status == HabitStatus.ACTIVE:
                         name = HabitNameInput(item)
@@ -60,7 +66,7 @@ def order_page_ui(habit_list: HabitList):
         with ui.column().classes("w-full pl-1 items-center gap-3"):
             add_ui(habit_list)
 
-            with components.HabitOrderCard():
+            with HabitOrderCard():
                 with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
                     add = HabitAddButton(habit_list, add_ui.refresh)
                     add.classes("col-span-12")
