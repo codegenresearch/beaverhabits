@@ -10,6 +10,7 @@ from beaverhabits.frontend.components import (
 from beaverhabits.frontend.layout import layout
 from beaverhabits.logging import logger
 from beaverhabits.storage.storage import HabitList
+from beaverhabits.storage.enums import HabitStatus
 
 
 async def item_drop(e, habit_list: HabitList):
@@ -26,17 +27,18 @@ async def item_drop(e, habit_list: HabitList):
         if isinstance(x, components.HabitOrderCard) and x.habit and not x.habit.is_deleted
     ]
     habit_list.order = [str(x.id) for x in habits]
-    logger.info(f"Item dropped: ID={e.args['id']}, New Index={e.args['new_index']}")
-    logger.info(f"New order: {habits}")
+    logger.info(f"Dropped habit ID={e.args['id']} to new index={e.args['new_index']}")
 
     # Handle habit status based on new position
     for index, habit in enumerate(habits):
-        if index == 0 and habit.is_archived:
-            habit.is_archived = False
-            logger.info(f"Habit {habit.id} unarchived due to new position.")
-        elif index > 0 and not habit.is_archived:
-            habit.is_archived = True
-            logger.info(f"Habit {habit.id} archived due to new position.")
+        if index == 0:
+            if habit.status != HabitStatus.ACTIVE:
+                habit.status = HabitStatus.ACTIVE
+                logger.info(f"Habit {habit.id} set to ACTIVE.")
+        else:
+            if habit.status != HabitStatus.ARCHIVED:
+                habit.status = HabitStatus.ARCHIVED
+                logger.info(f"Habit {habit.id} set to ARCHIVED.")
 
     add_ui.refresh()
 
@@ -48,7 +50,7 @@ def add_ui(habit_list: HabitList):
             if not item.is_deleted:
                 with components.HabitOrderCard(item):
                     with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
-                        if item.is_archived:
+                        if item.status == HabitStatus.ARCHIVED:
                             ui.label(item.name).classes("col-span-3")
                         else:
                             name = HabitNameInput(item)
