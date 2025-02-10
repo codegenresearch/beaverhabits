@@ -79,14 +79,14 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["name"] = value
 
     @property
-    def star(self) -> int:
+    def star(self) -> bool:
         """
-        Returns the star status of the habit as an integer.
+        Returns the star status of the habit as a boolean.
         """
-        return self.data.get("star", 0)
+        return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         """
         Sets the star status of the habit.
         """
@@ -104,7 +104,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         Updates the completion status of a record for a specific day.
         If the record does not exist, it creates a new one.
         """
-        if (record := next((r for r in self.records if r.day == day), None)) is not None:
+        record = next((r for r in self.records if r.day == day), None)
+        if record:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
@@ -120,7 +121,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
             "name": self.name,
             "records": [{"day": day.strftime(DAY_MASK), "done": True} for day in merged_ticks],
             "id": self.id,
-            "star": max(self.star, other.star)
+            "star": self.star or other.star
         })
 
     def __eq__(self, other: object) -> bool:
@@ -137,9 +138,9 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     def __str__(self):
         """
-        Returns a string representation of the habit including its ID.
+        Returns a string representation of the habit.
         """
-        return f"{self.name} (ID: {self.id})"
+        return f"{self.name} {'[x]' if self.star else '[ ]'}"
 
     __repr__ = __str__
 
@@ -179,7 +180,6 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
-        return None
 
     async def add(self, name: str) -> None:
         """
@@ -191,7 +191,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
             "name": name,
             "records": [],
             "id": generate_short_hash(name),
-            "star": 0
+            "star": False
         }
         self.data["habits"].append(new_habit)
         self.order.append(new_habit["id"])
