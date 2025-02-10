@@ -86,12 +86,15 @@ class DictHabit(Habit[DictRecord], DictStorage):
     def records(self) -> list[DictRecord]:
         return [DictRecord(**d) for d in self.data["records"]]
 
+    @records.setter
+    def records(self, value: List[DictRecord]) -> None:
+        self.data["records"] = [record.data for record in value]
+
     async def tick(self, day: datetime.date, done: bool) -> None:
         if record := next((r for r in self.records if r.day == day), None):
             record.done = done
         else:
-            self.records.append(DictRecord(day=day, done=done))
-        self.data["records"] = [record.data for record in self.records]
+            self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
 
     async def merge(self, other: "DictHabit") -> "DictHabit":
         self_ticks = {r.day for r in self.records if r.done}
@@ -115,12 +118,12 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
-    habits: List[DictHabit] = field(default_factory=list)
+    _habits: List[DictHabit] = field(default_factory=list)
     order: List[str] = field(default_factory=list)
 
     def __post_init__(self):
         self.data = {
-            "habits": [habit.data for habit in self.habits],
+            "habits": [habit.data for habit in self._habits],
             "order": self.order
         }
 
@@ -147,14 +150,14 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 
     async def add(self, name: str) -> None:
         new_habit = DictHabit(name=name)
-        self.habits.append(new_habit)
+        self._habits.append(new_habit)
         self.data["habits"].append(new_habit.data)
         self.order.append(new_habit.id)
         self.data["order"] = self.order
 
     async def remove(self, item: DictHabit) -> None:
-        self.habits = [habit for habit in self.habits if habit.id != item.id]
-        self.data["habits"] = [habit.data for habit in self.habits]
+        self._habits = [habit for habit in self._habits if habit.id != item.id]
+        self.data["habits"] = [habit.data for habit in self._habits]
         self.order = [habit_id for habit_id in self.order if habit_id != item.id]
         self.data["order"] = self.order
 
@@ -172,4 +175,4 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         result_habits.sort(key=lambda x: x.star, reverse=True)
         result_order = [habit.id for habit in result_habits]
 
-        return DictHabitList(habits=result_habits, order=result_order)
+        return DictHabitList(_habits=result_habits, order=result_order)
