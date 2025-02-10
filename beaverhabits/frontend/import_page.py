@@ -30,24 +30,24 @@ async def import_from_json(text: str) -> HabitList:
 
 
 def import_ui_page(user: User):
-    async def handle_upload(event: events.UploadEventArguments):
+    async def handle_upload(e: events.UploadEventArguments):
         try:
-            text = event.content.read().decode("utf-8")
+            text = e.content.read().decode("utf-8")
             other = await import_from_json(text)
             current = await user_storage.get_user_habit_list(user)
 
             if current:
                 merged = await current.merge(other)
-                added = set(habit.id for habit in other.habits) - set(habit.id for habit in current.habits)
-                merged_count = len(set(habit.id for habit in other.habits).intersection(set(habit.id for habit in current.habits)))
-                unchanged = set(habit.id for habit in current.habits) - set(habit.id for habit in other.habits)
+                added = len(set(habit.id for habit in other.habits) - set(habit.id for habit in current.habits))
+                merged_count = len(set(habit.id for habit in other.habits) & set(habit.id for habit in current.habits))
+                unchanged = len(set(habit.id for habit in current.habits) - set(habit.id for habit in other.habits))
 
                 logger.info(f"Imported habits: {len(other.habits)}")
-                logger.info(f"Added: {len(added)}, Merged: {merged_count}, Unchanged: {len(unchanged)}")
+                logger.info(f"Added: {added}, Merged: {merged_count}, Unchanged: {unchanged}")
 
                 message = (
                     f"Imported {len(other.habits)} habits. "
-                    f"Added: {len(added)}, Merged: {merged_count}, Unchanged: {len(unchanged)}"
+                    f"Added: {added}, Merged: {merged_count}, Unchanged: {unchanged}"
                 )
             else:
                 merged = other
