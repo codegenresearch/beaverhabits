@@ -72,7 +72,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
     @star.setter
     def star(self, value: int) -> None:
         """Sets the star status of the habit."""
-        self.data["star"] = bool(value)
+        self.data["star"] = value
 
     @property
     def records(self) -> list[DictRecord]:
@@ -84,7 +84,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         Updates the completion status of a record for a specific day.
         If the record does not exist, it creates a new one.
         """
-        if (record := next((r for r in self.records if r.day == day), None)) is not None:
+        record = next((r for r in self.records if r.day == day), None)
+        if record:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
@@ -110,8 +111,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return hash(self.id)
 
     def __str__(self):
-        """Returns the string representation of the habit."""
-        return self.name
+        """Returns the string representation of the habit including its ID."""
+        return f"{self.name} (ID: {self.id})"
 
     __repr__ = __str__
 
@@ -147,14 +148,11 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
-        return None
 
     async def add(self, name: str) -> None:
         """
         Adds a new habit to the list.
         """
-        if not name.strip():
-            raise ValueError("Habit name cannot be empty.")
         new_habit = {
             "name": name,
             "records": [],
