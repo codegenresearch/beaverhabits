@@ -60,6 +60,13 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
+    @id.setter
+    def id(self, value: str) -> None:
+        """
+        Sets the unique identifier of the habit.
+        """
+        self.data["id"] = value
+
     @property
     def name(self) -> str:
         """
@@ -89,7 +96,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = value
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         """
         Returns a list of records associated with the habit.
         """
@@ -98,6 +105,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
     async def tick(self, day: datetime.date, done: bool) -> None:
         """
         Updates the completion status of a record for a specific day.
+        If the record does not exist, it creates a new one.
         """
         if record := next((r for r in self.records if r.day == day), None):
             record.done = done
@@ -107,6 +115,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
     def merge(self, other: 'DictHabit') -> 'DictHabit':
         """
         Merges another habit's records into this habit.
+        Combines the records of both habits, marking days as done if they appear in either habit.
         """
         self_days = {record.day for record in self.records if record.done}
         other_days = {record.day for record in other.records if record.done}
@@ -143,7 +152,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     """
 
     @property
-    def habits(self) -> List[DictHabit]:
+    def habits(self) -> list[DictHabit]:
         """
         Returns a sorted list of habits based on their star status.
         """
@@ -154,6 +163,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
         """
         Retrieves a habit by its unique identifier.
+        Returns None if the habit is not found.
         """
         for habit in self.habits:
             if habit.id == habit_id:
@@ -176,6 +186,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     def merge(self, other: 'DictHabitList') -> 'DictHabitList':
         """
         Merges another habit list into this habit list.
+        Combines the habits from both lists, merging records where habits have the same ID.
         """
         combined_habits = {habit.id: habit for habit in self.habits}
         for habit in other.habits:
