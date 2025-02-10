@@ -38,10 +38,10 @@ class Habit[R: CheckedRecord](Protocol):
     def name(self, value: str) -> None: ...
 
     @property
-    def star(self) -> bool: ...
+    def star(self) -> int: ...
 
     @star.setter
-    def star(self, value: bool) -> None: ...
+    def star(self, value: int) -> None: ...
 
     @property
     def status(self) -> HabitStatus: ...
@@ -57,12 +57,11 @@ class Habit[R: CheckedRecord](Protocol):
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None:
-        record = next((r for r in self.records if r.day == day), None)
-        if record:
+        if record := next((r for r in self.records if r.day == day), None):
             record.done = done
         else:
-            new_record = {"day": day, "done": done}
-            self.records.append(new_record)
+            data = {"day": day.strftime("%Y-%m-%d"), "done": done}
+            self.records.append(data)
 
     def __str__(self):
         return self.name
@@ -82,8 +81,8 @@ class HabitList[H: Habit](Protocol):
     def order(self, value: List[str]) -> None: ...
 
     async def add(self, name: str) -> None:
-        new_habit = {"name": name, "star": False, "status": HabitStatus.ACTIVE, "records": []}
-        self.habits.append(new_habit)
+        d = {"name": name, "star": 0, "status": HabitStatus.ACTIVE, "records": []}
+        self.habits.append(d)
 
     async def remove(self, item: H) -> None:
         self.habits.remove(item)
