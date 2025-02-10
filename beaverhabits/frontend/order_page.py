@@ -45,10 +45,7 @@ def add_ui(habit_list: HabitList):
         for item in sorted(habit_list.habits, key=lambda x: (x.star, x.status == HabitStatus.INACTIVE)):
             with HabitOrderCard(item):
                 with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
-                    if item.status == HabitStatus.ACTIVE:
-                        name = HabitNameInput(item)
-                    else:
-                        name = ui.label(item.name)
+                    name = HabitNameInput(item) if item.status == HabitStatus.ACTIVE else ui.label(item.name)
                     name.classes("col-span-3 col-3 break-all")
                     name.props("borderless")
 
@@ -64,7 +61,8 @@ def add_ui(habit_list: HabitList):
 def order_page_ui(habit_list: HabitList):
     with layout():
         with ui.column().classes("w-full pl-1 items-center gap-3"):
-            add_ui(habit_list)
+            with ui.column().classes("sortable"):
+                add_ui(habit_list)
 
             with HabitOrderCard():
                 with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
