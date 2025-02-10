@@ -25,18 +25,7 @@ class DictStorage:
 @dataclass
 class DictRecord(CheckedRecord, DictStorage):
     """
-    # Read (d1~d3)
-    persistent    ->     memory      ->     view
-    d0: [x]              d0: [x]
-                                            d1: [ ]
-    d2: [x]              d2: [x]            d2: [x]
-                                            d3: [ ]
-
-    # Update:
-    view(update)  ->     memory      ->     persistent
-    d1: [ ]
-    d2: [ ]              d2: [ ]            d2: [x]
-    d3: [x]              d3: [x]            d3: [ ]
+    Represents a record of a habit check for a specific day.
     """
 
     @property
@@ -55,6 +44,10 @@ class DictRecord(CheckedRecord, DictStorage):
 
 @dataclass
 class DictHabit(Habit[DictRecord], DictStorage):
+    """
+    Represents a habit with a list of check records.
+    """
+
     @property
     def id(self) -> str:
         if "id" not in self.data:
@@ -70,11 +63,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["name"] = value
 
     @property
-    def star(self) -> int:
-        return self.data.get("star", 0)
+    def star(self) -> bool:
+        return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         self.data["star"] = value
 
     @property
@@ -90,6 +83,9 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return hash(self.id)
 
     async def tick(self, day: datetime.date, done: bool) -> None:
+        """
+        Marks the habit as done or not done for a specific day.
+        """
         if record := next((r for r in self.records if r.day == day), None):
             record.done = done
         else:
@@ -97,6 +93,9 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["records"].append(data)
 
     async def merge(self, other: 'DictHabit') -> None:
+        """
+        Merges another habit's records into this habit.
+        """
         existing_days = {r.day for r in self.records}
         for record in other.records:
             if record.day not in existing_days:
@@ -106,7 +105,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
     """
-    This class manages a list of habits for a user. It provides methods to add, remove, and retrieve habits,
+    Manages a list of habits for a user, providing methods to add, remove, and retrieve habits,
     as well as to merge another habit list into the current one.
     """
 
@@ -117,25 +116,38 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return habits
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
+        """
+        Retrieves a habit by its ID.
+        """
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
         return None
 
     async def add(self, name: str) -> None:
+        """
+        Adds a new habit with the given name.
+        """
         if any(habit.name == name for habit in self.habits):
             return
         d = {"name": name, "records": [], "id": generate_short_hash(name)}
         self.data["habits"].append(d)
 
     async def remove(self, item: DictHabit) -> None:
+        """
+        Removes a habit from the list.
+        """
         if item.data in self.data["habits"]:
             self.data["habits"].remove(item.data)
 
     async def merge_user_habit_list(self, other: 'DictHabitList') -> None:
+        """
+        Merges another habit list into this habit list.
+        """
+        existing_habits = {habit.id for habit in self.habits}
         for habit in other.habits:
-            existing_habit = next((h for h in self.habits if h.id == habit.id), None)
-            if existing_habit:
+            if habit.id in existing_habits:
+                existing_habit = next(h for h in self.habits if h.id == habit.id)
                 await existing_habit.merge(habit)
             else:
                 self.data["habits"].append(habit.data)
