@@ -9,6 +9,7 @@ class HabitStatus(Enum):
     NORMAL = "normal"
     ARCHIVED = "archived"
     SOFT_DELETE = "soft_delete"
+    ACTIVE = "active"
 
 
 class CheckedRecord(Protocol):
@@ -44,13 +45,13 @@ class Habit[R: CheckedRecord](Protocol):
     def star(self, value: int) -> None: ...
 
     @property
+    def records(self) -> List[R]: ...
+
+    @property
     def status(self) -> HabitStatus: ...
 
     @status.setter
     def status(self, value: HabitStatus) -> None: ...
-
-    @property
-    def records(self) -> List[R]: ...
 
     @property
     def ticked_days(self) -> list[datetime.date]:
@@ -79,8 +80,6 @@ class HabitList[H: Habit](Protocol):
     async def remove(self, item: H) -> None: ...
 
     async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
-
-    async def merge(self, other: "HabitList[H]") -> "HabitList[H]": ...
 
 
 class SessionStorage[L: HabitList](Protocol):
