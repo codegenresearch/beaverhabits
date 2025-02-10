@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import datetime
-from typing import List, Optional
+from typing import list, Optional
 
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList, HabitStatus
 from beaverhabits.utils import generate_short_hash
@@ -78,7 +78,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = bool(value)
 
     @property
-    def records(self) -> List[DictRecord]:
+    def records(self) -> list[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
     @property
@@ -134,11 +134,11 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     """
 
     @property
-    def habits(self) -> List[DictHabit]:
+    def habits(self) -> list[DictHabit]:
         """
         Returns a list of habits, filtered and sorted by status and order.
         """
-        valid_statuses = {HabitStatus.ACTIVE, HabitStatus.ARCHIVED}
+        valid_statuses = {HabitStatus.ACTIVE: 1, HabitStatus.ARCHIVED: 2}
         habits = [DictHabit(d) for d in self.data["habits"] if d.get("status", HabitStatus.ACTIVE) in valid_statuses]
 
         # Sort by order and then by status
@@ -146,18 +146,18 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         habits.sort(
             key=lambda x: (
                 o.index(str(x.id)) if str(x.id) in o else float("inf"),
-                x.status.value
+                valid_statuses.get(x.status, float("inf"))
             )
         )
 
         return habits
 
     @property
-    def order(self) -> List[str]:
+    def order(self) -> list[str]:
         return self.data.get("order", [])
 
     @order.setter
-    def order(self, value: List[str]) -> None:
+    def order(self, value: list[str]) -> None:
         self.data["order"] = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
