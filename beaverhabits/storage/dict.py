@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional, List
 
-from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList, UserStorage
+from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 
 DAY_MASK = "%Y-%m-%d"
