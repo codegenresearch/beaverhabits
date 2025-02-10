@@ -22,7 +22,7 @@ class CheckedRecord(Protocol):
 
 class Habit[R: CheckedRecord](Protocol):
     @property
-    def id(self) -> str | int: ...
+    def id(self) -> str: ...
 
     @property
     def name(self) -> str: ...
@@ -34,7 +34,7 @@ class Habit[R: CheckedRecord](Protocol):
     def star(self) -> bool: ...
 
     @star.setter
-    def star(self, value: int) -> None: ...
+    def star(self, value: bool) -> None: ...
 
     @property
     def records(self) -> List[R]: ...
@@ -44,6 +44,13 @@ class Habit[R: CheckedRecord](Protocol):
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None: ...
+
+    async def merge(self, other: 'Habit[R]') -> 'Habit[R]':
+        self_ticks = {r.day for r in self.records if r.done}
+        other_ticks = {r.day for r in other.records if r.done}
+        merged_ticks = sorted(list(self_ticks | other_ticks))
+        merged_records = [{"day": day, "done": True} for day in merged_ticks]
+        return type(self)(id=self.id, name=self.name, records=merged_records, star=self.star)
 
     def __str__(self):
         return self.name
@@ -56,22 +63,34 @@ class HabitList[H: Habit](Protocol):
     @property
     def habits(self) -> List[H]: ...
 
-    async def add(self, name: str) -> None: ...
+    async def add(self, name: str) -> H:
+        new_habit = type(self.habits[0])(id="", name=name, records=[], star=False)
+        self.habits.append(new_habit)
+        return new_habit
 
-    async def remove(self, item: H) -> None: ...
+    async def remove(self, item: H) -> None:
+        self.habits = [habit for habit in self.habits if habit != item]
 
-    async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
+    async def get_habit_by(self, habit_id: str) -> Optional[H]:
+        return next((habit for habit in self.habits if habit.id == habit_id), None)
+
+    async def merge(self, other: 'HabitList[H]') -> 'HabitList[H]':
+        result_habits = set(self.habits).symmetric_difference(set(other.habits))
+        for self_habit in self.habits:
+            for other_habit in other.habits:
+                if self_habit == other_habit:
+                    new_habit = await self_habit.merge(other_habit)
+                    result_habits.add(new_habit)
+        return type(self)(habits=list(result_habits))
 
 
 class SessionStorage[L: HabitList](Protocol):
-    def get_user_habit_list(self) -> Optional[L]: ...
+    def retrieve_user_habit_list(self) -> Optional[L]: ...
 
-    def save_user_habit_list(self, habit_list: L) -> None: ...
+    def store_user_habit_list(self, habit_list: L) -> None: ...
 
 
 class UserStorage[L: HabitList](Protocol):
-    async def get_user_habit_list(self, user: User) -> Optional[L]: ...
+    async def retrieve_user_habit_list(self, user: User) -> Optional[L]: ...
 
-    async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
-
-    async def merge_user_habit_list(self, user: User, other: L) -> L: ...
+    async def store_user_habit_list(self, user: User, habit_list: L) -> None: ...
