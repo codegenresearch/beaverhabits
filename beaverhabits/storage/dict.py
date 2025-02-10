@@ -84,8 +84,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         Updates the completion status of a record for a specific day.
         If the record does not exist, it creates a new one.
         """
-        record = next((r for r in self.records if r.day == day), None)
-        if record:
+        if (record := next((r for r in self.records if r.day == day), None)) is not None:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
