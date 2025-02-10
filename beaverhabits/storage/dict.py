@@ -168,7 +168,6 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
-        return None
 
     async def add(self, name: str) -> None:
         """
