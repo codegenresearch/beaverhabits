@@ -6,9 +6,9 @@ from beaverhabits.app.db import User
 
 
 class HabitStatus(Enum):
-    ACTIVE = "ACTIVE"
-    ARCHIVED = "ARCHIVED"
-    SOFT_DELETED = "SOFT_DELETED"
+    normal = "normal"
+    archive = "archive"
+    soft_delete = "soft_delete"
 
 
 class CheckedRecord(Protocol):
@@ -38,10 +38,10 @@ class Habit[R: CheckedRecord](Protocol):
     def name(self, value: str) -> None: ...
 
     @property
-    def star(self) -> int: ...
+    def star(self) -> bool: ...
 
     @star.setter
-    def star(self, value: int) -> None: ...
+    def star(self, value: bool) -> None: ...
 
     @property
     def status(self) -> HabitStatus: ...
@@ -81,7 +81,7 @@ class HabitList[H: Habit](Protocol):
     def order(self, value: List[str]) -> None: ...
 
     async def add(self, name: str) -> None:
-        d = {"name": name, "star": 0, "status": HabitStatus.ACTIVE, "records": []}
+        d = {"name": name, "star": False, "status": HabitStatus.normal, "records": []}
         self.habits.append(d)
 
     async def remove(self, item: H) -> None:
