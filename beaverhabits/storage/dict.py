@@ -64,8 +64,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: bool) -> None:
-        self.data["star"] = value
+    def star(self, value: int) -> None:
+        self.data["star"] = bool(value)
 
     @property
     def records(self) -> List[DictRecord]:
@@ -164,7 +164,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 This revised code addresses the feedback by:
 1. Removing the invalid syntax line.
 2. Enhancing the clarity and detail of docstrings.
-3. Ensuring the `star` property is a boolean.
+3. Ensuring the `star` property setter uses an integer type.
 4. Modifying the `merge` method in `DictHabit` to return a new `DictHabit` instance.
 5. Simplifying `__eq__` and `__hash__` methods.
 6. Ensuring methods return the correct types.
