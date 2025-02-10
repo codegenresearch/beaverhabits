@@ -9,7 +9,7 @@ from beaverhabits.frontend.components import (
 )
 from beaverhabits.frontend.layout import layout
 from beaverhabits.logging import logger
-from beaverhabits.storage.storage import HabitList
+from beaverhabits.storage.storage import HabitList, HabitStatus
 
 
 async def item_drop(e, habit_list: HabitList):
@@ -26,14 +26,14 @@ async def item_drop(e, habit_list: HabitList):
         if isinstance(x, components.HabitOrderCard) and x.habit
     ]
     habit_list.order = [str(x.id) for x in habits]
-    logger.info(f"Item dropped: id={e.args['id']}, new_index={e.args['new_index']}, new_order={habits}")
+    logger.info(f"Dropped item {e.args['id']} to index {e.args['new_index']}")
 
     # Handle status changes based on new position
-    for habit in habits:
-        if habit_list.index(habit) < len(habits) - 1:
-            habit.status = 'active'
+    for i, habit in enumerate(habits):
+        if i < len(habits) - 1:
+            habit.status = HabitStatus.ACTIVE
         else:
-            habit.status = 'archived'
+            habit.status = HabitStatus.ARCHIVED
 
     add_ui.refresh()
 
@@ -41,7 +41,7 @@ async def item_drop(e, habit_list: HabitList):
 @ui.refreshable
 def add_ui(habit_list: HabitList):
     with ui.column().classes("sortable").classes("gap-3"):
-        for item in habit_list.get_habits_by_status('active'):
+        for item in habit_list.get_habits_by_status(HabitStatus.ACTIVE):
             with components.HabitOrderCard(item):
                 with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
                     name = HabitNameInput(item)
