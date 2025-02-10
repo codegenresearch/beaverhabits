@@ -26,7 +26,19 @@ async def item_drop(e, habit_list: HabitList):
         if isinstance(x, components.HabitOrderCard) and x.habit and not x.habit.is_deleted
     ]
     habit_list.order = [str(x.id) for x in habits]
+    logger.info(f"Item dropped: ID={e.args['id']}, New Index={e.args['new_index']}")
     logger.info(f"New order: {habits}")
+
+    # Handle habit status based on new position
+    for index, habit in enumerate(habits):
+        if index == 0 and habit.is_archived:
+            habit.is_archived = False
+            logger.info(f"Habit {habit.id} unarchived due to new position.")
+        elif index > 0 and not habit.is_archived:
+            habit.is_archived = True
+            logger.info(f"Habit {habit.id} archived due to new position.")
+
+    add_ui.refresh()
 
 
 @ui.refreshable
@@ -36,9 +48,12 @@ def add_ui(habit_list: HabitList):
             if not item.is_deleted:
                 with components.HabitOrderCard(item):
                     with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
-                        name = HabitNameInput(item)
-                        name.classes("col-span-3")
-                        name.props("borderless")
+                        if item.is_archived:
+                            ui.label(item.name).classes("col-span-3")
+                        else:
+                            name = HabitNameInput(item)
+                            name.classes("col-span-3")
+                            name.props("borderless")
 
                         ui.space().classes("col-span-7")
 
