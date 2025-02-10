@@ -20,7 +20,7 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit[R](Protocol):
+class Habit[R: CheckedRecord](Protocol):
     @property
     def id(self) -> str | int: ...
 
@@ -40,7 +40,7 @@ class Habit[R](Protocol):
     def records(self) -> List[R]: ...
 
     @property
-    def ticked_days(self) -> List[datetime.date]:
+    def ticked_days(self) -> list[datetime.date]:
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None: ...
@@ -51,7 +51,7 @@ class Habit[R](Protocol):
     __repr__ = __str__
 
 
-class HabitList[H](Protocol):
+class HabitList[H: Habit](Protocol):
 
     @property
     def habits(self) -> List[H]: ...
@@ -63,13 +63,13 @@ class HabitList[H](Protocol):
     async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
 
 
-class SessionStorage[L](Protocol):
+class SessionStorage[L: HabitList](Protocol):
     def get_user_habit_list(self) -> Optional[L]: ...
 
     def save_user_habit_list(self, habit_list: L) -> None: ...
 
 
-class UserStorage[L](Protocol):
+class UserStorage[L: HabitList](Protocol):
     async def get_user_habit_list(self, user: User) -> Optional[L]: ...
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
