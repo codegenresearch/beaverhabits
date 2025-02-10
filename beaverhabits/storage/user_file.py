@@ -28,11 +28,7 @@ class UserDiskStorage(UserStorage[DictHabitList]):
         d = self._get_persistent_dict(user)
         d[KEY_NAME] = habit_list.data
 
-    async def merge_user_habit_list(
-        self,
-        user: User,
-        other: DictHabitList
-    ) -> DictHabitList:
+    async def merge_user_habit_list(self, user: User, other: DictHabitList) -> DictHabitList:
         current = await self.get_user_habit_list(user)
         if current is None:
             return other
