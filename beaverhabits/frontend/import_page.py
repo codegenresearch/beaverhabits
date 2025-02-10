@@ -27,26 +27,25 @@ def import_ui_page(user: User):
     async def handle_upload(e: events.UploadEventArguments):
         try:
             text = e.content.read().decode("utf-8")
-            to_habit_list = await import_from_json(text)
-            from_habit_list = await user_storage.get_user_habit_list(user)
+            other = await import_from_json(text)
+            current = await user_storage.get_user_habit_list(user)
 
-            if from_habit_list:
-                merged_habit_list = await from_habit_list.merge(to_habit_list)
-                added_habits = set(to_habit_list.habits) - set(from_habit_list.habits)
-                unchanged_habits = set(from_habit_list.habits) - set(to_habit_list.habits)
-                merged_habits = set(to_habit_list.habits) & set(from_habit_list.habits)
-                logger.info(f"Added habits: {len(added_habits)}")
-                logger.info(f"Merged habits: {len(merged_habits)}")
-                logger.info(f"Unchanged habits: {len(unchanged_habits)}")
+            if current:
+                merged = await user_storage.merge_user_habit_list(user, other)
+                added = len(set(other.habits) - set(current.habits))
+                merged_count = len(set(other.habits) & set(current.habits))
+                unchanged = len(set(current.habits) - set(other.habits))
+                logger.info(f"Added: {added}, Merged: {merged_count}, Unchanged: {unchanged}")
             else:
-                merged_habit_list = to_habit_list
-                added_habits = set(to_habit_list.habits)
-                logger.info(f"Added habits: {len(added_habits)}")
+                merged = other
+                added = len(other.habits)
+                logger.info(f"Added: {added}")
+
+            message = f"Are you sure? This will add {added} new habits."
+            if current:
+                message += f" {merged_count} existing habits will be merged."
 
             with ui.dialog() as dialog, ui.card().classes("w-64"):
-                message = f"Are you sure? This will add {len(added_habits)} new habits."
-                if from_habit_list:
-                    message += f" {len(merged_habits)} existing habits will be merged."
                 ui.label(message)
                 with ui.row():
                     ui.button("Yes", on_click=lambda: dialog.submit("Yes"))
@@ -56,9 +55,9 @@ def import_ui_page(user: User):
             if result != "Yes":
                 return
 
-            await user_storage.save_user_habit_list(user, merged_habit_list)
+            await user_storage.save_user_habit_list(user, merged)
             ui.notify(
-                f"Imported {len(to_habit_list.habits)} habits",
+                f"Imported {len(other.habits)} habits",
                 position="top",
                 color="positive",
             )
