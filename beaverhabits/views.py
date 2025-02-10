@@ -1,7 +1,8 @@
 import datetime
 import json
 import random
-from typing import List, Optional
+import time
+from typing import List, Union
 
 from fastapi import HTTPException
 from nicegui import ui
@@ -25,12 +26,12 @@ def dummy_habit_list(days: List[datetime.date]):
                 {"day": day.strftime(DAY_MASK), "done": pick()} for day in days
             ],
         }
-        for name in ("Order pizza", "Running", "Table Tennis", "Clean", "Call mom")
+        for name in ("Order pizz", "Running", "Table Tennis", "Clean", "Call mom")
     ]
     return DictHabitList({"habits": items})
 
 
-def get_session_habit_list() -> Optional[HabitList]:
+def get_session_habit_list() -> HabitList | None:
     return session_storage.get_user_habit_list()
 
 
@@ -55,7 +56,7 @@ def get_or_create_session_habit_list(days: List[datetime.date]) -> HabitList:
     return habit_list
 
 
-async def get_user_habit_list(user: User) -> Optional[HabitList]:
+async def get_user_habit_list(user: User) -> HabitList | None:
     return await user_storage.get_user_habit_list(user)
 
 
@@ -71,7 +72,10 @@ async def get_user_habit(user: User, habit_id: str) -> Habit:
     return habit
 
 
-async def get_or_create_user_habit_list(user: User, days: List[datetime.date]) -> HabitList:
+async def get_or_create_user_habit_list(
+    user: User,
+    days: List[datetime.date]
+) -> HabitList:
     habit_list = await get_user_habit_list(user)
     if habit_list is not None:
         return habit_list
@@ -82,6 +86,7 @@ async def get_or_create_user_habit_list(user: User, days: List[datetime.date]) -
 
 
 async def export_user_habit_list(habit_list: HabitList, user_identify: str) -> None:
+    # Convert habit list to JSON format and prepare for download
     if isinstance(habit_list, DictHabitList):
         data = {
             "user_email": user_identify,
@@ -114,7 +119,7 @@ class DictHabitList(HabitList):
     async def remove(self, item: Habit) -> None:
         self.data["habits"] = [habit for habit in self.data["habits"] if habit["id"] != item.id]
 
-    async def get_habit_by(self, habit_id: str) -> Optional[Habit]:
+    async def get_habit_by(self, habit_id: str) -> Union[Habit, None]:
         for habit in self.data["habits"]:
             if habit["id"] == habit_id:
                 return DictHabit(habit)
