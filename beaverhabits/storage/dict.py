@@ -19,6 +19,19 @@ class DictStorage:
 class DictRecord(CheckedRecord, DictStorage):
     """
     Represents a single record of a habit with a specific day and completion status.
+
+    # Read (d1~d3)
+    persistent    ->     memory      ->     view
+    d0: [x]              d0: [x]
+                                            d1: [ ]
+    d2: [x]              d2: [x]            d2: [x]
+                                            d3: [ ]
+
+    # Update:
+    view(update)  ->     memory      ->     persistent
+    d1: [ ]
+    d2: [ ]              d2: [ ]            d2: [x]
+    d3: [x]              d3: [x]            d3: [ ]
     """
 
     @property
@@ -70,12 +83,12 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         """Sets the star status of the habit."""
         self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         """Returns the list of records associated with the habit."""
         return [DictRecord(d) for d in self.data["records"]]
 
@@ -122,21 +135,24 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     """
 
     @property
-    def habits(self) -> list[DictHabit]:
+    def habits(self) -> List[DictHabit]:
         """
         Returns the list of habits sorted by star status and order.
         """
         habits = [DictHabit(d) for d in self.data["habits"]]
-        habits.sort(key=lambda x: (not x.star, self.order.index(x.id) if x.id in self.order else float('inf')))
+        if self.order:
+            habits.sort(key=lambda x: (not x.star, self.order.index(x.id)))
+        else:
+            habits.sort(key=lambda x: not x.star)
         return habits
 
     @property
-    def order(self) -> list[str]:
+    def order(self) -> List[str]:
         """Returns the order of habits."""
         return self.data.get("order", [])
 
     @order.setter
-    def order(self, value: list[str]) -> None:
+    def order(self, value: List[str]) -> None:
         """Sets the order of habits."""
         self.data["order"] = value
 
@@ -147,6 +163,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
         """
@@ -165,7 +182,8 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         Removes a habit from the list.
         """
         self.data["habits"].remove(item.data)
-        self.data["order"].remove(item.id)
+        if item.id in self.data["order"]:
+            self.data["order"].remove(item.id)
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
         """
