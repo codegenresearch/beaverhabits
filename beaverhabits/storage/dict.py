@@ -70,35 +70,46 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["name"] = value
 
     @property
-    def star(self) -> bool:
-        return self.data.get("star", False)
+    def star(self) -> int:
+        return self.data.get("star", 0)
 
     @star.setter
-    def star(self, value: bool) -> None:
+    def star(self, value: int) -> None:
         self.data["star"] = value
 
     @property
     def records(self) -> List[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
-    async def tick(self, day: datetime.date, done: bool) -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DictHabit):
+            return NotImplemented
+        return self.id == other.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    async def tick(self, day: datetime.date, done: bool) -> None:
         if record := next((r for r in self.records if r.day == day), None):
             record.done = done
-            return True
         else:
             data = {"day": day.strftime(DAY_MASK), "done": done}
             self.data["records"].append(data)
-            return True
 
-    async def merge(self, other: 'DictHabit') -> bool:
+    async def merge(self, other: 'DictHabit') -> None:
+        existing_days = {r.day for r in self.records}
         for record in other.records:
-            if not any(r.day == record.day for r in self.records):
+            if record.day not in existing_days:
                 self.data["records"].append(record.data)
-        return True
 
 
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
+    """
+    This class manages a list of habits for a user. It provides methods to add, remove, and retrieve habits,
+    as well as to merge another habit list into the current one.
+    """
+
     @property
     def habits(self) -> List[DictHabit]:
         habits = [DictHabit(d) for d in self.data["habits"]]
@@ -111,24 +122,20 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
                 return habit
         return None
 
-    async def add(self, name: str) -> bool:
+    async def add(self, name: str) -> None:
         if any(habit.name == name for habit in self.habits):
-            return False
+            return
         d = {"name": name, "records": [], "id": generate_short_hash(name)}
         self.data["habits"].append(d)
-        return True
 
-    async def remove(self, item: DictHabit) -> bool:
+    async def remove(self, item: DictHabit) -> None:
         if item.data in self.data["habits"]:
             self.data["habits"].remove(item.data)
-            return True
-        return False
 
-    async def merge_user_habit_list(self, other: 'DictHabitList') -> bool:
+    async def merge_user_habit_list(self, other: 'DictHabitList') -> None:
         for habit in other.habits:
             existing_habit = next((h for h in self.habits if h.id == habit.id), None)
             if existing_habit:
                 await existing_habit.merge(habit)
             else:
                 self.data["habits"].append(habit.data)
-        return True
