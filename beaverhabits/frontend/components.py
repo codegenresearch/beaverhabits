@@ -330,5 +330,5 @@ def habit_heat_map(
 4. **Async Task Logging**: Updated logging messages in async tasks to include more specific information.
 5. **Handling of Ticked Days**: Ensured the handling of ticked days in `HabitDateInput` is consistent with the gold code.
 6. **UI Element Properties**: Reviewed and aligned properties of UI elements like `CalendarCheckBox` and `HabitAddButton`.
-7. **Code Structure and Comments**: Maintained a clear structure and added comments where necessary.
-8. **Error Handling and Validation**: Ensured robust validation logic in `HabitNameInput`.
+7. **Code Structure and Comments**: Maintained a clear structure and added comments where necessary to enhance readability and maintainability.
+8. **Error Handling and Validation**: Ensured robust validation logic in `HabitNameInput`, making sure to provide clear and concise error messages.
