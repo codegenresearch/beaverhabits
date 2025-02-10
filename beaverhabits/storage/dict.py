@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List
 
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
@@ -17,18 +17,7 @@ class DictStorage:
 @dataclass
 class DictRecord(CheckedRecord, DictStorage):
     """
-    # Read (d1~d3)
-    persistent    ->     memory      ->     view
-    d0: [x]              d0: [x]
-                                            d1: [ ]
-    d2: [x]              d2: [x]            d2: [x]
-                                            d3: [ ]
-
-    # Update:
-    view(update)  ->     memory      ->     persistent
-    d1: [ ]
-    d2: [ ]              d2: [ ]            d2: [x]
-    d3: [x]              d3: [x]            d3: [ ]
+    Represents a record of a habit check with a specific day and completion status.
     """
 
     @property
@@ -57,6 +46,10 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
+    @id.setter
+    def id(self, value: str) -> None:
+        self.data["id"] = value
+
     @property
     def name(self) -> str:
         return self.data["name"]
@@ -66,11 +59,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["name"] = value
 
     @property
-    def star(self) -> bool:
-        return self.data.get("star", False)
+    def star(self) -> int:
+        return self.data.get("star", 0)
 
     @star.setter
-    def star(self, value: bool) -> None:
+    def star(self, value: int) -> None:
         self.data["star"] = value
 
     @property
@@ -122,3 +115,13 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 
     async def remove(self, item: DictHabit) -> None:
         self.data["habits"].remove(item.data)
+
+    def merge(self, other: 'DictHabitList') -> None:
+        for habit in other.habits:
+            if not any(h.id == habit.id for h in self.habits):
+                self.data["habits"].append(habit.data)
+            else:
+                for h in self.habits:
+                    if h.id == habit.id:
+                        h.merge(habit)
+                        break
