@@ -54,7 +54,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
     Attributes:
         id (str): A unique identifier for the habit.
         name (str): The name of the habit.
-        star (int): Indicates if the habit is starred (1 for starred, 0 for not starred).
+        star (bool): Indicates if the habit is starred.
         records (list[DictRecord]): A list of records for the habit.
     """
 
@@ -77,11 +77,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["name"] = value
 
     @property
-    def star(self) -> int:
-        return self.data.get("star", 0)
+    def star(self) -> bool:
+        return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         self.data["star"] = value
 
     @property
@@ -207,7 +207,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 This code snippet addresses the feedback by:
 1. Removing the extraneous comment at the end of the `DictHabitList` class definition.
 2. Ensuring clear and concise docstrings with examples where applicable.
-3. Using `int` for the `star` property in the `DictHabit` class.
+3. Using `bool` for the `star` property in the `DictHabit` class.
 4. Modifying the `merge` method in the `DictHabit` class to return a new `DictHabit` instance.
 5. Simplifying the `__eq__` method in the `DictHabit` class.
 6. Directly removing the habit from the data in the `remove` method of the `DictHabitList` class.
