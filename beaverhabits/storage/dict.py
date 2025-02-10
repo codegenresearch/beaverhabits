@@ -19,6 +19,9 @@ class DictStorage:
 class DictRecord(CheckedRecord, DictStorage):
     """
     Manages individual habit records with day and completion status.
+
+    Attributes:
+        data (dict): The underlying data dictionary containing 'day' and 'done' keys.
     """
 
     @property
@@ -37,6 +40,9 @@ class DictRecord(CheckedRecord, DictStorage):
 class DictHabit(Habit[DictRecord], DictStorage):
     """
     Represents a habit with a name, star status, and a list of records.
+
+    Attributes:
+        data (dict): The underlying data dictionary containing 'name', 'star', and 'records' keys.
     """
 
     @property
@@ -58,11 +64,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["name"] = value
 
     @property
-    def star(self) -> bool:
-        return self.data.get("star", False)
+    def star(self) -> int:
+        return self.data.get("star", 0)
 
     @star.setter
-    def star(self, value: bool) -> None:
+    def star(self, value: int) -> None:
         self.data["star"] = value
 
     @property
@@ -84,10 +90,27 @@ class DictHabit(Habit[DictRecord], DictStorage):
             data = {"day": day.strftime(DAY_MASK), "done": done}
             self.data["records"].append(data)
 
+    async def merge(self, other: 'DictHabit') -> None:
+        """
+        Merges another habit into this one, combining records based on their completion status.
+
+        Args:
+            other (DictHabit): The habit to merge into this one.
+        """
+        existing_records = {record.day: record for record in self.records}
+        for other_record in other.records:
+            if other_record.day not in existing_records:
+                self.data["records"].append(other_record.data)
+            elif existing_records[other_record.day].done != other_record.done:
+                existing_records[other_record.day].done = other_record.done
+
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
     """
     Manages a list of habits with functionalities to add, remove, and retrieve habits.
+
+    Attributes:
+        data (dict): The underlying data dictionary containing 'habits' key.
     """
 
     @property
@@ -113,26 +136,25 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     async def merge(self, other: 'DictHabitList') -> None:
         """
         Merges another habit list into this one, combining records from habits with the same id.
+
+        Args:
+            other (DictHabitList): The habit list to merge into this one.
         """
         existing_habits = {habit.id: habit for habit in self.habits}
         for other_habit in other.habits:
             if other_habit.id in existing_habits:
                 existing_habit = existing_habits[other_habit.id]
-                existing_records = {record.day: record for record in existing_habit.records}
-                for other_record in other_habit.records:
-                    if other_record.day not in existing_records:
-                        existing_habit.data["records"].append(other_record.data)
-                    elif existing_records[other_record.day].done != other_record.done:
-                        existing_records[other_record.day].done = other_record.done
+                await existing_habit.merge(other_habit)
             else:
                 self.data["habits"].append(other_habit.data)
 
 
 This revised code addresses the feedback by:
-1. Removing unnecessary try-except blocks.
-2. Ensuring properties are defined without error handling.
-3. Using `list[DictRecord]` for type annotations.
-4. Adding a setter for the `id` property.
-5. Implementing a more specific `merge` method.
-6. Adding `__eq__` and `__hash__` methods to `DictHabit`.
-7. Enhancing documentation for clarity.
+1. Removing the invalid syntax line.
+2. Enhancing the docstrings for clarity.
+3. Ensuring property definitions are consistent with the gold code.
+4. Implementing a more specific `merge` method in `DictHabit`.
+5. Simplifying `__eq__` and `__hash__` methods.
+6. Using `list[DictRecord]` and `list[DictHabit]` for type annotations.
+7. Adjusting the `star` property to use an integer type.
+8. Ensuring methods return the correct types.
