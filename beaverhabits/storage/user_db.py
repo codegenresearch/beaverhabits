@@ -42,6 +42,4 @@ class UserDatabaseStorage(UserStorage[DictHabitList]):
         current = await self.get_user_habit_list(user)
         if current is None:
             return other
-        merged_habit_list = await current.merge(other)
-        await self.save_user_habit_list(user, merged_habit_list)
-        return merged_habit_list
+        return await current.merge(other)
