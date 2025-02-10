@@ -45,13 +45,6 @@ class Habit[R: CheckedRecord](Protocol):
 
     async def tick(self, day: datetime.date, done: bool) -> None: ...
 
-    async def merge(self, other: 'Habit[R]') -> 'Habit[R]':
-        self_ticks = {r.day for r in self.records if r.done}
-        other_ticks = {r.day for r in other.records if r.done}
-        merged_ticks = sorted(list(self_ticks | other_ticks))
-        merged_records = [{"day": day, "done": True} for day in merged_ticks]
-        return type(self)(id=self.id, name=self.name, records=merged_records, star=bool(self.star))
-
     def __str__(self):
         return self.name
 
@@ -73,15 +66,6 @@ class HabitList[H: Habit](Protocol):
     async def get_habit_by(self, habit_id: str) -> Optional[H]:
         return next((habit for habit in self.habits if habit.id == habit_id), None)
 
-    async def merge(self, other: 'HabitList[H]') -> 'HabitList[H]':
-        result_habits = set(self.habits).symmetric_difference(set(other.habits))
-        for self_habit in self.habits:
-            for other_habit in other.habits:
-                if self_habit == other_habit:
-                    new_habit = await self_habit.merge(other_habit)
-                    result_habits.add(new_habit)
-        return type(self)(habits=list(result_habits))
-
 
 class SessionStorage[L: HabitList](Protocol):
     def get_user_habit_list(self) -> Optional[L]: ...
@@ -94,4 +78,4 @@ class UserStorage[L: HabitList](Protocol):
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
 
-    async def merge_user_habit_list(self, user: User, other_habit_list: L) -> L: ...
+    async def merge_user_habit_list(self, user: User, other_list: L) -> L: ...
