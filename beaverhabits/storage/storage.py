@@ -6,9 +6,9 @@ from beaverhabits.app.db import User
 
 
 class HabitStatus(Enum):
-    NORMAL = "normal"
+    ACTIVE = "active"
     ARCHIVE = "archive"
-    SOFT_DELETE = "soft_delete"
+    SOFT_DELETED = "soft_deleted"
 
 
 class CheckedRecord(Protocol):
@@ -44,13 +44,13 @@ class Habit[R: CheckedRecord](Protocol):
     def star(self, value: int) -> None: ...
 
     @property
+    def records(self) -> List[R]: ...
+
+    @property
     def status(self) -> HabitStatus: ...
 
     @status.setter
     def status(self, value: HabitStatus) -> None: ...
-
-    @property
-    def records(self) -> List[R]: ...
 
     @property
     def ticked_days(self) -> list[datetime.date]:
