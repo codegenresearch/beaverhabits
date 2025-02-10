@@ -23,17 +23,6 @@ class DictRecord(CheckedRecord, DictStorage):
     The data dictionary contains:
     - 'day': A string representing the date in the format 'YYYY-MM-DD'.
     - 'done': A boolean indicating whether the habit was completed on that day.
-
-    Example:
-    data = {
-        "day": "2023-10-01",
-        "done": True
-    }
-
-    The relationship between persistent storage, memory, and the view is as follows:
-    - Persistent storage is updated through the view.
-    - Memory is updated when the view is modified.
-    - The view reflects the current state of memory.
     """
 
     @property
@@ -61,17 +50,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
     - 'star': A boolean indicating whether the habit is starred.
     - 'records': A list of dictionaries representing the records of the habit.
     - 'id': A string representing the unique identifier of the habit.
-
-    Example:
-    data = {
-        "name": "Exercise",
-        "star": True,
-        "records": [
-            {"day": "2023-10-01", "done": True},
-            {"day": "2023-10-02", "done": False}
-        ],
-        "id": "abc123"
-    }
     """
 
     @property
@@ -113,8 +91,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     async def tick(self, day: datetime.date, done: bool) -> None:
         """Updates the completion status of a record for a specific day."""
-        record = next((r for r in self.records if r.day == day), None)
-        if record:
+        if (record := next((r for r in self.records if r.day == day), None)) is not None:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
@@ -142,7 +119,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     def __str__(self) -> str:
         """Returns a string representation of the habit including its ID."""
-        return f"{self.name} {'[x]' if self.star else '[ ]'}"
+        return f"{self.name} {'[x]' if self.star else '[ ]'} (ID: {self.id})"
 
     __repr__ = __str__
 
@@ -154,29 +131,14 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     The data dictionary contains:
     - 'habits': A list of dictionaries representing the habits.
     - 'order': A list of strings representing the order of the habits.
-
-    Example:
-    data = {
-        "habits": [
-            {
-                "name": "Exercise",
-                "star": True,
-                "records": [
-                    {"day": "2023-10-01", "done": True},
-                    {"day": "2023-10-02", "done": False}
-                ],
-                "id": "abc123"
-            }
-        ],
-        "order": ["abc123"]
-    }
     """
 
     @property
     def habits(self) -> list[DictHabit]:
         """Returns a list of habits sorted by order and star status."""
         habits = [DictHabit(d) for d in self.data["habits"]]
-        habits.sort(key=lambda x: (self.order.index(x.id) if x.id in self.order else float('inf'), not x.star))
+        order = self.data.get("order", [])
+        habits.sort(key=lambda x: (order.index(x.id) if x.id in order else float('inf'), not x.star))
         return habits
 
     @property
@@ -206,12 +168,12 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
             "star": False
         }
         self.data["habits"].append(new_habit)
-        self.order.append(new_habit["id"])
+        self.data.setdefault("order", []).append(new_habit["id"])
 
     async def remove(self, item: DictHabit) -> None:
         """Removes a habit from the list."""
         self.data["habits"].remove(item.data)
-        self.order.remove(item.id)
+        self.data["order"].remove(item.id)
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
         """Merges the habits of this list with another list."""
@@ -221,7 +183,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
                 if self_habit == other_habit:
                     merged_habit = await self_habit.merge(other_habit)
                     result.add(merged_habit)
-        return DictHabitList({"habits": [h.data for h in result], "order": self.order})
+        return DictHabitList({"habits": [h.data for h in result], "order": self.data.get("order", [])})
 
 class HabitCreate(BaseModel):
     """
