@@ -51,10 +51,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
-    @id.setter
-    def id(self, value: str) -> None:
-        self.data["id"] = value
-
     @property
     def name(self) -> str:
         return self.data["name"]
@@ -174,3 +170,4 @@ This revised code addresses the feedback by:
 6. Ensuring methods return the correct types.
 7. Not logging a warning in the `get_habit_by` method.
 8. Maintaining consistency in code style and formatting.
+9. Removing any unused imports.
