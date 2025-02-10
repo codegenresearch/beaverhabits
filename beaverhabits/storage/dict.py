@@ -10,24 +10,36 @@ MONTH_MASK = "%Y/%m"
 
 @dataclass(init=False)
 class DictStorage:
+    """
+    Base class for storage using a dictionary.
+    """
     data: dict = field(default_factory=dict, metadata={"exclude": True})
 
 @dataclass
 class DictRecord(CheckedRecord, DictStorage):
     """
-    Manages individual habit records with day and completion status.
+    Represents a single record of a habit, including the day and completion status.
     """
 
     @property
     def day(self) -> datetime.date:
+        """
+        Returns the day of the record as a datetime.date object.
+        """
         return datetime.datetime.strptime(self.data["day"], DAY_MASK).date()
 
     @property
     def done(self) -> bool:
+        """
+        Returns the completion status of the record.
+        """
         return self.data["done"]
 
     @done.setter
     def done(self, value: bool) -> None:
+        """
+        Sets the completion status of the record.
+        """
         self.data["done"] = value
 
 @dataclass
@@ -38,42 +50,96 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @property
     def id(self) -> str:
+        """
+        Returns the unique identifier for the habit.
+        """
         if "id" not in self.data:
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
     @id.setter
     def id(self, value: str) -> None:
+        """
+        Sets the unique identifier for the habit.
+        """
         self.data["id"] = value
 
     @property
     def name(self) -> str:
+        """
+        Returns the name of the habit.
+        """
         return self.data["name"]
 
     @name.setter
     def name(self, value: str) -> None:
+        """
+        Sets the name of the habit.
+        """
         self.data["name"] = value
 
     @property
-    def star(self) -> bool:
-        return self.data.get("star", False)
+    def star(self) -> int:
+        """
+        Returns the star status of the habit as an integer.
+        """
+        return self.data.get("star", 0)
 
     @star.setter
-    def star(self, value: bool) -> None:
+    def star(self, value: int) -> None:
+        """
+        Sets the star status of the habit.
+        """
         self.data["star"] = value
 
     @property
     def records(self) -> list[DictRecord]:
+        """
+        Returns a list of records associated with the habit.
+        """
         return [DictRecord(d) for d in self.data["records"]]
 
     async def tick(self, day: datetime.date, done: bool) -> None:
+        """
+        Updates the completion status of a record for a specific day.
+        If the record does not exist, it creates a new one.
+        """
         if (record := next((r for r in self.records if r.day == day), None)) is not None:
             record.done = done
         else:
             self.data["records"].append({"day": day.strftime(DAY_MASK), "done": done})
 
+    async def merge(self, other: "DictHabit") -> "DictHabit":
+        """
+        Merges the records of this habit with another habit.
+        """
+        self_ticks = {r.day for r in self.records if r.done}
+        other_ticks = {r.day for r in other.records if r.done}
+        merged_ticks = sorted(list(self_ticks | other_ticks))
+        return DictHabit({
+            "name": self.name,
+            "records": [{"day": day.strftime(DAY_MASK), "done": True} for day in merged_ticks],
+            "id": self.id,
+            "star": max(self.star, other.star)
+        })
+
+    def __eq__(self, other: object) -> bool:
+        """
+        Checks if two habits are equal based on their IDs.
+        """
+        return isinstance(other, DictHabit) and self.id == other.id
+
+    def __hash__(self) -> int:
+        """
+        Returns the hash value of the habit based on its ID.
+        """
+        return hash(self.id)
+
     def __str__(self):
-        return self.name
+        """
+        Returns a string representation of the habit including its ID.
+        """
+        return f"{self.name} (ID: {self.id})"
 
     __repr__ = __str__
 
@@ -85,37 +151,62 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 
     @property
     def habits(self) -> list[DictHabit]:
+        """
+        Returns a list of habits sorted by order and star status.
+        """
         habits = [DictHabit(d) for d in self.data["habits"]]
-        habits.sort(key=lambda x: self.order.index(x.id) if x.id in self.order else float('inf'))
+        habits.sort(key=lambda x: (self.order.index(x.id) if x.id in self.order else float('inf'), not x.star))
         return habits
 
     @property
     def order(self) -> list[str]:
+        """
+        Returns the order of habits.
+        """
         return self.data.get("order", [])
 
     @order.setter
     def order(self, value: list[str]) -> None:
+        """
+        Sets the order of habits.
+        """
         self.data["order"] = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
-        return next((habit for habit in self.habits if habit.id == habit_id), None)
+        """
+        Retrieves a habit by its ID.
+        """
+        for habit in self.habits:
+            if habit.id == habit_id:
+                return habit
+        return None
 
     async def add(self, name: str) -> None:
+        """
+        Adds a new habit to the list.
+        """
         if not name.strip():
             raise ValueError("Habit name cannot be empty.")
         new_habit = {
             "name": name,
             "records": [],
-            "id": generate_short_hash(name)
+            "id": generate_short_hash(name),
+            "star": 0
         }
         self.data["habits"].append(new_habit)
         self.order.append(new_habit["id"])
 
     async def remove(self, item: DictHabit) -> None:
+        """
+        Removes a habit from the list.
+        """
         self.data["habits"].remove(item.data)
         self.order.remove(item.id)
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
+        """
+        Merges the habits of this list with another list.
+        """
         result = set(self.habits).symmetric_difference(set(other.habits))
         for self_habit in self.habits:
             for other_habit in other.habits:
@@ -125,10 +216,16 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return DictHabitList({"habits": [h.data for h in result], "order": self.order})
 
 class HabitCreate(BaseModel):
+    """
+    Pydantic model for creating a new habit.
+    """
     name: str
 
     @validator('name')
     def name_must_not_be_empty(cls, v):
+        """
+        Validates that the habit name is not empty.
+        """
         if not v.strip():
             raise ValueError('Habit name cannot be empty.')
         return v
