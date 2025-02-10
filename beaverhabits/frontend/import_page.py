@@ -24,6 +24,9 @@ async def import_from_json(text: str) -> HabitList:
     except json.JSONDecodeError:
         logger.error("Failed to decode JSON.")
         raise ValueError("Invalid JSON format.")
+    except ValueError as ve:
+        logger.error("Value error while importing habits: %s", ve)
+        raise
     except Exception as e:
         logger.error("An error occurred while importing habits: %s", e)
         raise ValueError("Failed to import habits.")
@@ -50,7 +53,11 @@ def import_ui_page(user: User):
                 )
             else:
                 merged = other
-                message = f"Imported {len(other.habits)} new habits."
+                added_count = len(other.habits)
+                merged_count = 0
+                unchanged_count = 0
+                logger.info(f"Imported {added_count} new habits.")
+                message = f"Imported {added_count} new habits."
 
             with ui.dialog() as dialog, ui.card().classes("w-64"):
                 ui.label(f"Are you sure? This will add {added_count} new habits and merge {merged_count} existing ones.")
