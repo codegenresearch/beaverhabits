@@ -8,6 +8,7 @@ from beaverhabits.app.db import User
 class HabitStatus(Enum):
     ACTIVE = "ACTIVE"
     ARCHIVED = "ARCHIVED"
+    SOFT_DELETED = "SOFT_DELETED"
 
 
 class CheckedRecord(Protocol):
@@ -80,14 +81,12 @@ class HabitList[H: Habit](Protocol):
     @order.setter
     def order(self, value: List[str]) -> None: ...
 
-    async def add(self, name: str) -> H:
+    async def add(self, name: str) -> None:
         new_habit = {"name": name, "star": False, "status": HabitStatus.ACTIVE, "records": []}
         self.habits.append(new_habit)
-        return new_habit
 
-    async def remove(self, item: H) -> H:
+    async def remove(self, item: H) -> None:
         self.habits.remove(item)
-        return item
 
     async def get_habit_by(self, habit_id: str) -> Optional[H]:
         for habit in self.habits:
