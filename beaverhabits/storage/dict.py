@@ -51,13 +51,12 @@ class DictHabit(Habit[DictRecord], DictStorage):
             "name": name,
             "status": status.value,
             "records": [],
-            "star": False
+            "star": False,
+            "id": generate_short_hash(name)
         }
 
     @property
     def id(self) -> str:
-        if "id" not in self.data:
-            self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
 
     @property
@@ -119,7 +118,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     def __str__(self) -> str:
         status_label = f"({self.status.name})" if self.status != HabitStatus.ACTIVE else ""
-        return f"{self.name}{status_label}"
+        return f"{self.name}<{self.id}>{status_label}"
 
     __repr__ = __str__
 
@@ -127,8 +126,10 @@ class DictHabit(Habit[DictRecord], DictStorage):
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
     def __init__(self, habits: List[dict] = None, order: List[str] = None):
+        if habits is None:
+            habits = []
         self.data = {
-            "habits": [DictHabit(h["name"], HabitStatus(h.get("status", HabitStatus.ACTIVE.value))).data for h in habits] if habits else [],
+            "habits": [DictHabit(h["name"], HabitStatus(h.get("status", HabitStatus.ACTIVE.value))).data for h in habits],
             "order": order if order else []
         }
 
