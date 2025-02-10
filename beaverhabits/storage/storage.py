@@ -1,7 +1,15 @@
 import datetime
 from typing import List, Optional, Protocol
 from beaverhabits.app.db import User
-from beaverhabits.utils import log_action
+from enum import Enum
+
+# Assuming log_action is defined in beaverhabits.utils
+# If not, you need to define it there or remove the log_action calls
+# from beaverhabits.utils import log_action
+
+class HabitStatus(Enum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
 
 class CheckedRecord(Protocol):
     @property
@@ -12,7 +20,7 @@ class CheckedRecord(Protocol):
 
     @done.setter
     def done(self, value: bool) -> None: 
-        log_action(f"Setting done status for {self.day} to {value}")
+        # log_action(f"Setting done status for {self.day} to {value}")
         ...
 
     def __str__(self):
@@ -30,15 +38,23 @@ class Habit[R: CheckedRecord](Protocol):
 
     @name.setter
     def name(self, value: str) -> None: 
-        log_action(f"Renaming habit {self.id} to {value}")
+        # log_action(f"Renaming habit {self.id} to {value}")
         ...
 
     @property
     def star(self) -> bool: ...
 
     @star.setter
-    def star(self, value: int) -> None: 
-        log_action(f"Setting star status for habit {self.id} to {value}")
+    def star(self, value: bool) -> None: 
+        # log_action(f"Setting star status for habit {self.id} to {value}")
+        ...
+
+    @property
+    def status(self) -> HabitStatus: ...
+
+    @status.setter
+    def status(self, value: HabitStatus) -> None: 
+        # log_action(f"Setting status for habit {self.id} to {value}")
         ...
 
     @property
@@ -49,7 +65,7 @@ class Habit[R: CheckedRecord](Protocol):
         return [r.day for r in self.records if r.done]
 
     async def tick(self, day: datetime.date, done: bool) -> None: 
-        log_action(f"Ticking habit {self.id} on {day} with status {done}")
+        # log_action(f"Ticking habit {self.id} on {day} with status {done}")
         ...
 
     def __str__(self):
@@ -68,41 +84,41 @@ class HabitList[H: Habit](Protocol):
 
     @order.setter
     def order(self, value: List[str]) -> None: 
-        log_action(f"Setting order to {value}")
+        # log_action(f"Setting order to {value}")
         ...
 
     async def add(self, name: str) -> None: 
-        log_action(f"Adding habit with name {name}")
+        # log_action(f"Adding habit with name {name}")
         ...
 
     async def remove(self, item: H) -> None: 
-        log_action(f"Removing habit {item.id}")
+        # log_action(f"Removing habit {item.id}")
         ...
 
     async def get_habit_by(self, habit_id: str) -> Optional[H]: 
-        log_action(f"Getting habit by id {habit_id}")
+        # log_action(f"Getting habit by id {habit_id}")
         ...
 
 
 class SessionStorage[L: HabitList](Protocol):
     def get_user_habit_list(self) -> Optional[L]: 
-        log_action("Getting user habit list from session")
+        # log_action("Getting user habit list from session")
         ...
 
     def save_user_habit_list(self, habit_list: L) -> None: 
-        log_action("Saving user habit list to session")
+        # log_action("Saving user habit list to session")
         ...
 
 
 class UserStorage[L: HabitList](Protocol):
     async def get_user_habit_list(self, user: User) -> Optional[L]: 
-        log_action(f"Getting user habit list for user {user.id}")
+        # log_action(f"Getting user habit list for user {user.id}")
         ...
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None: 
-        log_action(f"Saving user habit list for user {user.id}")
+        # log_action(f"Saving user habit list for user {user.id}")
         ...
 
     async def merge_user_habit_list(self, user: User, other: L) -> L: 
-        log_action(f"Merging user habit list for user {user.id}")
+        # log_action(f"Merging user habit list for user {user.id}")
         ...
