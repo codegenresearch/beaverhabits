@@ -13,8 +13,9 @@ KEY_NAME = "data"
 logger = logging.getLogger(__name__)
 
 class UserDiskStorage(UserStorage[DictHabitList]):
-    def __init__(self):
-        pass
+    def _get_persistent_dict(self, user: User) -> PersistentDict:
+        path = Path(f"{USER_DATA_FOLDER}/{str(user.email)}.json")
+        return PersistentDict(path, encoding="utf-8")
 
     async def get_user_habit_list(self, user: User) -> Optional[DictHabitList]:
         d = self._get_persistent_dict(user).get(KEY_NAME)
@@ -31,7 +32,3 @@ class UserDiskStorage(UserStorage[DictHabitList]):
         if current is None:
             return other
         return await current.merge(other)
-
-    def _get_persistent_dict(self, user: User) -> PersistentDict:
-        path = Path(f"{USER_DATA_FOLDER}/{str(user.email)}.json")
-        return PersistentDict(path, encoding="utf-8")
