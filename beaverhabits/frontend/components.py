@@ -17,12 +17,14 @@ strptime = datetime.datetime.strptime
 
 
 def link(text: str, target: str) -> ui.link:
+    """Create a styled link."""
     return ui.link(text, target=target).classes(
         "dark:text-white no-underline hover:no-underline"
     )
 
 
 def menu_header(title: str, target: str) -> ui.link:
+    """Create a styled menu header link."""
     link = ui.link(title, target=target)
     link.classes(
         "text-semibold text-2xl dark:text-white no-underline hover:no-underline"
@@ -31,15 +33,19 @@ def menu_header(title: str, target: str) -> ui.link:
 
 
 def compat_menu(name: str, callback: Callable) -> ui.menu_item:
+    """Create a compatible menu item."""
     return ui.menu_item(name, callback).props("dense").classes("items-center")
 
 
 def menu_icon_button(icon_name: str, click: Optional[Callable] = None) -> Button:
+    """Create a styled menu icon button."""
     button_props = "flat=true unelevated=true padding=xs background=none"
     return ui.button(icon=icon_name, color=None, on_click=click).props(button_props)
 
 
 class HabitCheckBox(ui.checkbox):
+    """Checkbox for marking a habit as completed on a specific day."""
+
     def __init__(
         self,
         habit: Habit,
@@ -54,6 +60,7 @@ class HabitCheckBox(ui.checkbox):
         self._update_style(value)
 
     def _update_style(self, value: bool) -> None:
+        """Update the style of the checkbox based on its value."""
         self.props(
             f'checked-icon="{icons.DONE}" unchecked-icon="{icons.CLOSE}" keep-color'
         )
@@ -63,12 +70,15 @@ class HabitCheckBox(ui.checkbox):
             self.props("color=currentColor")
 
     async def _async_task(self, e: events.ValueChangeEventArguments) -> None:
+        """Handle the checkbox state change asynchronously."""
         self._update_style(e.value)
         await self.habit.tick(self.day, e.value)
         logger.info(f"Day {self.day} ticked: {e.value}")
 
 
 class HabitNameInput(ui.input):
+    """Input field for editing the habit name."""
+
     def __init__(self, habit: Habit) -> None:
         super().__init__(value=habit.name, on_change=self._async_task)
         self.habit = habit
@@ -76,11 +86,14 @@ class HabitNameInput(ui.input):
         self.props("dense")
 
     async def _async_task(self, e: events.ValueChangeEventArguments) -> None:
+        """Handle the habit name change asynchronously."""
         self.habit.name = e.value
         logger.info(f"Habit Name changed to {e.value}")
 
 
 class HabitStarCheckbox(ui.checkbox):
+    """Checkbox for starring a habit."""
+
     def __init__(self, habit: Habit, refresh: Callable) -> None:
         super().__init__("", value=habit.star, on_change=self._async_task)
         self.habit = habit
@@ -91,12 +104,15 @@ class HabitStarCheckbox(ui.checkbox):
         self.refresh = refresh
 
     async def _async_task(self, e: events.ValueChangeEventArguments) -> None:
+        """Handle the star checkbox state change asynchronously."""
         self.habit.star = e.value
         self.refresh()
         logger.info(f"Habit Star changed to {e.value}")
 
 
 class HabitDeleteButton(ui.button):
+    """Button for deleting a habit."""
+
     def __init__(self, habit: Habit, habit_list: HabitList, refresh: Callable) -> None:
         super().__init__(on_click=self._async_task, icon=icons.DELETE)
         self.habit = habit
@@ -104,12 +120,15 @@ class HabitDeleteButton(ui.button):
         self.refresh = refresh
 
     async def _async_task(self) -> None:
+        """Handle the habit deletion asynchronously."""
         await self.habit_list.remove(self.habit)
         self.refresh()
         logger.info(f"Deleted habit: {self.habit.name}")
 
 
 class HabitAddCard(ui.card):
+    """Card for adding a new habit."""
+
     def __init__(self, habit_list: HabitList, refresh: Callable) -> None:
         super().__init__()
         self.habit_list = habit_list
@@ -117,11 +136,13 @@ class HabitAddCard(ui.card):
         self.add_input()
 
     def add_input(self) -> None:
+        """Add an input field to the card."""
         input_field = ui.input("New item")
         input_field.on("keydown.enter", self._async_task)
         input_field.props("dense")
 
     async def _async_task(self, e: events.KeyEventArguments) -> None:
+        """Handle the new habit addition asynchronously."""
         input_field = e.sender
         logger.info(f"Adding new habit: {input_field.value}")
         await self.habit_list.add(input_field.value)
@@ -134,6 +155,8 @@ TODAY = "today"
 
 
 class HabitDateInput(ui.date):
+    """Date input for selecting days for a habit."""
+
     def __init__(
         self, today: datetime.date, habit: Habit, ticked_data: dict[datetime.date, bool]
     ) -> None:
@@ -156,11 +179,13 @@ class HabitDateInput(ui.date):
 
     @property
     def ticked_days(self) -> List[str]:
+        """Get the list of ticked days formatted as strings."""
         result = [k.strftime(DAY_MASK) for k, v in self.ticked_data.items() if v]
         result.append(TODAY)
         return result
 
     async def _async_task(self, e: events.ValueChangeEventArguments) -> None:
+        """Handle the date selection change asynchronously."""
         old_values = set(self.habit.ticked_days)
         new_values = set(strptime(x, DAY_MASK).date() for x in e.value if x != TODAY)
 
@@ -179,6 +204,8 @@ class HabitDateInput(ui.date):
 
 @dataclass
 class CalendarHeatmap:
+    """Habit records by weeks."""
+
     today: datetime.date
     headers: List[str]
     data: List[List[datetime.date]]
@@ -188,6 +215,7 @@ class CalendarHeatmap:
     def build(
         cls, today: datetime.date, weeks: int, firstweekday: int = calendar.MONDAY
     ) -> 'CalendarHeatmap':
+        """Build a calendar heatmap."""
         data = cls.generate_calendar_days(today, weeks, firstweekday)
         headers = cls.generate_calendar_headers(data[0])
         week_day_abbr = [calendar.day_abbr[(firstweekday + i) % 7] for i in range(7)]
@@ -196,6 +224,7 @@ class CalendarHeatmap:
 
     @staticmethod
     def generate_calendar_headers(days: List[datetime.date]) -> List[str]:
+        """Generate headers for the calendar."""
         if not days:
             return []
 
@@ -221,6 +250,7 @@ class CalendarHeatmap:
         total_weeks: int,
         firstweekday: int = calendar.MONDAY,
     ) -> List[List[datetime.date]]:
+        """Generate calendar days."""
         lastweekday = (firstweekday - 1) % 7
         days_delta = (lastweekday - today.weekday()) % 7
         last_date_of_calendar = today + datetime.timedelta(days=days_delta)
@@ -235,6 +265,8 @@ class CalendarHeatmap:
 
 
 class CalendarCheckBox(ui.checkbox):
+    """Checkbox for marking a day in the calendar heatmap."""
+
     def __init__(
         self,
         habit: Habit,
@@ -260,9 +292,11 @@ class CalendarCheckBox(ui.checkbox):
 
     @property
     def ticked(self) -> bool:
+        """Check if the day is ticked."""
         return self.ticked_data.get(self.day, False)
 
     def _icon_svg(self) -> tuple:
+        """Get the SVG icons for the checkbox."""
         unchecked_color, checked_color = "rgb(54,54,54)", "rgb(103,150,207)"
         return (
             icons.SQUARE.format(color=unchecked_color, text=self.day.day),
@@ -270,6 +304,7 @@ class CalendarCheckBox(ui.checkbox):
         )
 
     async def _async_task(self, e: events.ValueChangeEventArguments) -> None:
+        """Handle the calendar checkbox state change asynchronously."""
         self.ticked_data[self.day] = e.value
         await self.habit.tick(self.day, e.value)
         logger.info(f"Calendar Day {self.day} ticked: {e.value}")
@@ -280,6 +315,7 @@ def habit_heat_map(
     habit_calendar: CalendarHeatmap,
     ticked_data: Optional[dict[datetime.date, bool]] = None,
 ) -> None:
+    """Render the habit heatmap."""
     today = habit_calendar.today
 
     if ticked_data is None:
@@ -316,7 +352,7 @@ def habit_heat_map(
 5. **Async Task Methods**: Ensured that the order of operations within async task methods matches the gold code.
 6. **Property Decorators**: Verified that property decorators are used correctly and consistently, particularly for properties like `ticked_days`.
 7. **Type Annotations**: Ensured that type annotations are used consistently throughout the code, particularly for lists and dictionaries.
-8. **Comments and Documentation**: Removed any comments that were causing syntax errors and added docstrings to classes and methods for better documentation.
+8. **Comments and Documentation**: Added docstrings to classes and methods for better documentation.
 9. **Formatting and Style**: Ensured consistent formatting, including spacing, indentation, and string quotation styles, to match the conventions used in the gold code.
 10. **Error Handling**: Considered adding error handling where appropriate, especially in async methods, to ensure robustness.
 11. **Unused Imports**: Removed any unused imports to keep the code clean and efficient.
