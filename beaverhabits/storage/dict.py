@@ -151,13 +151,14 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
-        d = {"name": name, "records": [], "id": generate_short_hash(name)}
+        d = {"name": name, "records": [], "id": generate_short_hash(name), "status": HabitStatus.ACTIVE}
         self.data["habits"].append(d)
 
     async def remove(self, item: DictHabit) -> None:
-        self.data["habits"].remove(item.data)
+        self.data["habits"] = [h.data for h in self.habits if h.id != item.id]
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
         result = set(self.habits).symmetric_difference(set(other.habits))
