@@ -47,6 +47,10 @@ class DictRecord(CheckedRecord, DictStorage):
 
 @dataclass
 class DictHabit(Habit[DictRecord], DictStorage):
+    """
+    Represents a habit with records of completion.
+    """
+
     @property
     def id(self) -> str:
         if "id" not in self.data:
@@ -74,18 +78,21 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["star"] = bool(value)
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
     @property
     def status(self) -> HabitStatus:
-        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE.value))
+        return self.data.get("status", HabitStatus.ACTIVE)
 
     @status.setter
     def status(self, value: HabitStatus) -> None:
-        self.data["status"] = value.value
+        self.data["status"] = value
 
     async def tick(self, day: datetime.date, done: bool) -> None:
+        """
+        Marks a specific day as done or not done for this habit.
+        """
         if record := next((r for r in self.records if r.day == day), None):
             record.done = done
         else:
@@ -93,6 +100,9 @@ class DictHabit(Habit[DictRecord], DictStorage):
             self.data["records"].append(data)
 
     async def merge(self, other: "DictHabit") -> "DictHabit":
+        """
+        Merges this habit with another habit, combining their records.
+        """
         self_ticks = {r.day for r in self.records if r.done}
         other_ticks = {r.day for r in other.records if r.done}
         result = sorted(list(self_ticks | other_ticks))
@@ -119,17 +129,24 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
+    """
+    Represents a list of habits with an order.
+    """
+
     @property
-    def habits(self) -> list[DictHabit]:
-        valid_statuses = {HabitStatus.ACTIVE: 1, HabitStatus.ARCHIVED: 2}
-        habits = [DictHabit(d) for d in self.data["habits"] if HabitStatus(d.get("status", HabitStatus.ACTIVE.value)) in valid_statuses]
+    def habits(self) -> List[DictHabit]:
+        """
+        Returns a list of habits, filtered and sorted by status and order.
+        """
+        valid_statuses = {HabitStatus.ACTIVE, HabitStatus.ARCHIVED}
+        habits = [DictHabit(d) for d in self.data["habits"] if d.get("status", HabitStatus.ACTIVE) in valid_statuses]
 
         # Sort by order and then by status
         o = self.order
         habits.sort(
             key=lambda x: (
                 o.index(str(x.id)) if str(x.id) in o else float("inf"),
-                valid_statuses.get(x.status, float("inf"))
+                x.status.value
             )
         )
 
@@ -144,18 +161,31 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         self.data["order"] = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
+        """
+        Retrieves a habit by its ID.
+        """
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
+        """
+        Adds a new habit to the list.
+        """
         d = {"name": name, "records": [], "id": generate_short_hash(name)}
         self.data["habits"].append(d)
 
     async def remove(self, item: DictHabit) -> None:
-        self.data["habits"] = [h.data for h in self.habits if h.id != item.id]
+        """
+        Removes a habit from the list.
+        """
+        self.data["habits"].remove(item.data)
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
+        """
+        Merges this habit list with another habit list.
+        """
         result = set(self.habits).symmetric_difference(set(other.habits))
 
         # Merge the habit if it exists
