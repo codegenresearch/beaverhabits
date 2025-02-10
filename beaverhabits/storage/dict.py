@@ -121,17 +121,24 @@ class DictHabit(Habit[DictRecord], DictStorage):
 class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
     def habits(self) -> list[DictHabit]:
-        habits = [DictHabit(d) for d in self.data["habits"] if HabitStatus(d.get("status", HabitStatus.ACTIVE.value)) != HabitStatus.SOLF_DELETED]
+        status_order = {
+            HabitStatus.ACTIVE: 1,
+            HabitStatus.ARCHIVED: 2,
+            HabitStatus.SOLF_DELETED: 3,
+        }
+        habits = [
+            DictHabit(d)
+            for d in self.data["habits"]
+            if HabitStatus(d.get("status", HabitStatus.ACTIVE.value)) != HabitStatus.SOLF_DELETED
+        ]
 
-        # Sort by order
-        if self.order:
-            habits.sort(
-                key=lambda x: (
-                    self.order.index(str(x.id))
-                    if str(x.id) in self.order
-                    else float("inf")
-                )
+        # Sort by order and then by status
+        habits.sort(
+            key=lambda x: (
+                self.order.index(str(x.id)) if str(x.id) in self.order else float("inf"),
+                status_order[HabitStatus(x.data.get("status", HabitStatus.ACTIVE.value))],
             )
+        )
 
         return habits
 
@@ -147,6 +154,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         for habit in self.habits:
             if habit.id == habit_id:
                 return habit
+        return None
 
     async def add(self, name: str) -> None:
         d = {"name": name, "records": [], "id": generate_short_hash(name)}
