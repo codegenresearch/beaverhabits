@@ -6,9 +6,9 @@ from beaverhabits.app.db import User
 
 
 class HabitStatus(Enum):
-    NORMAL = "normal"
+    ACTIVE = "normal"
     ARCHIVE = "archive"
-    SOFT_DELETE = "soft_delete"
+    SOFT_DELETED = "soft_delete"
 
 
 class CheckedRecord(Protocol):
