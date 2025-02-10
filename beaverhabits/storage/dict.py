@@ -70,11 +70,11 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
-        self.data["star"] = bool(value)
+    def star(self, value: bool) -> None:
+        self.data["star"] = value
 
     @property
-    def records(self) -> list[DictRecord]:
+    def records(self) -> List[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
 
     @property
@@ -120,12 +120,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
-    def habits(self) -> list[DictHabit]:
-        status_order = {
-            HabitStatus.ACTIVE: 1,
-            HabitStatus.ARCHIVED: 2,
-            HabitStatus.SOLF_DELETED: 3,
-        }
+    def habits(self) -> List[DictHabit]:
         habits = [
             DictHabit(d)
             for d in self.data["habits"]
@@ -136,7 +131,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         habits.sort(
             key=lambda x: (
                 self.order.index(str(x.id)) if str(x.id) in self.order else float("inf"),
-                status_order[HabitStatus(x.data.get("status", HabitStatus.ACTIVE.value))],
+                HabitStatus(x.data.get("status", HabitStatus.ACTIVE.value)).value,
             )
         )
 
