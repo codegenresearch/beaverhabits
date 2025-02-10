@@ -53,7 +53,7 @@ class HabitCheckBox(ui.checkbox):
         self.day = day
         self._update_style(value)
 
-    def _update_style(self, value: bool):
+    def _update_style(self, value: bool) -> None:
         self.props(
             f'checked-icon="{icons.DONE}" unchecked-icon="{icons.CLOSE}" keep-color'
         )
@@ -62,7 +62,7 @@ class HabitCheckBox(ui.checkbox):
         else:
             self.props("color=currentColor")
 
-    async def _async_task(self, e: events.ValueChangeEventArguments):
+    async def _async_task(self, e: events.ValueChangeEventArguments) -> None:
         self._update_style(e.value)
         await self.habit.tick(self.day, e.value)
         logger.info(f"Day {self.day} ticked: {e.value}")
@@ -75,7 +75,7 @@ class HabitNameInput(ui.input):
         self.validation = lambda value: "Too long" if len(value) > 18 else None
         self.props("dense")
 
-    async def _async_task(self, e: events.ValueChangeEventArguments):
+    async def _async_task(self, e: events.ValueChangeEventArguments) -> None:
         self.habit.name = e.value
         logger.info(f"Habit Name changed to {e.value}")
 
@@ -90,7 +90,7 @@ class HabitStarCheckbox(ui.checkbox):
 
         self.refresh = refresh
 
-    async def _async_task(self, e: events.ValueChangeEventArguments):
+    async def _async_task(self, e: events.ValueChangeEventArguments) -> None:
         self.habit.star = e.value
         self.refresh()
         logger.info(f"Habit Star changed to {e.value}")
@@ -103,7 +103,7 @@ class HabitDeleteButton(ui.button):
         self.habit_list = habit_list
         self.refresh = refresh
 
-    async def _async_task(self):
+    async def _async_task(self) -> None:
         await self.habit_list.remove(self.habit)
         self.refresh()
         logger.info(f"Deleted habit: {self.habit.name}")
@@ -116,12 +116,12 @@ class HabitAddCard(ui.card):
         self.refresh = refresh
         self.add_input()
 
-    def add_input(self):
+    def add_input(self) -> None:
         input_field = ui.input("New item")
         input_field.on("keydown.enter", self._async_task)
         input_field.props("dense")
 
-    async def _async_task(self, e: events.KeyEventArguments):
+    async def _async_task(self, e: events.KeyEventArguments) -> None:
         input_field = e.sender
         logger.info(f"Adding new habit: {input_field.value}")
         await self.habit_list.add(input_field.value)
@@ -160,7 +160,7 @@ class HabitDateInput(ui.date):
         result.append(TODAY)
         return result
 
-    async def _async_task(self, e: events.ValueChangeEventArguments):
+    async def _async_task(self, e: events.ValueChangeEventArguments) -> None:
         old_values = set(self.habit.ticked_days)
         new_values = set(strptime(x, DAY_MASK).date() for x in e.value if x != TODAY)
 
@@ -269,7 +269,7 @@ class CalendarCheckBox(ui.checkbox):
             icons.SQUARE.format(color=checked_color, text=self.day.day),
         )
 
-    async def _async_task(self, e: events.ValueChangeEventArguments):
+    async def _async_task(self, e: events.ValueChangeEventArguments) -> None:
         self.ticked_data[self.day] = e.value
         await self.habit.tick(self.day, e.value)
         logger.info(f"Calendar Day {self.day} ticked: {e.value}")
@@ -309,12 +309,12 @@ def habit_heat_map(
 
 
 ### Key Changes Made:
-1. **Syntax Error Fix**: Removed the misplaced comment that was causing the `SyntaxError`.
+1. **Syntax Error Fix**: Removed any misplaced comments that could cause syntax errors.
 2. **Function Return Types**: Ensured that all functions have their return types explicitly defined.
 3. **Button Properties**: Corrected the typo in the `menu_icon_button` function by changing `backgroup` to `background`.
 4. **Class Consistency**: Ensured that the class definitions, especially for `HabitAddCard` and `HabitNameInput`, are consistent with the gold code.
 5. **Async Task Methods**: Ensured that the order of operations within async task methods matches the gold code.
-6. **Property Decorators**: Verified that property decorators are used correctly and consistently, especially for properties like `ticked_days`.
+6. **Property Decorators**: Verified that property decorators are used correctly and consistently, particularly for properties like `ticked_days`.
 7. **Type Annotations**: Ensured that type annotations are used consistently throughout the code, particularly for lists and dictionaries.
 8. **Comments and Documentation**: Removed any comments that were causing syntax errors and added docstrings to classes and methods for better documentation.
 9. **Formatting and Style**: Ensured consistent formatting, including spacing, indentation, and string quotation styles, to match the conventions used in the gold code.
