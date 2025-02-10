@@ -6,9 +6,9 @@ from beaverhabits.app.db import User
 
 
 class HabitStatus(Enum):
-    normal = "normal"
-    archive = "archive"
-    soft_delete = "soft_delete"
+    ACTIVE = "normal"
+    ARCHIVED = "archive"
+    SOFT_DELETED = "soft_delete"
 
 
 class CheckedRecord(Protocol):
@@ -81,7 +81,7 @@ class HabitList[H: Habit](Protocol):
     def order(self, value: List[str]) -> None: ...
 
     async def add(self, name: str) -> None:
-        d = {"name": name, "star": False, "status": HabitStatus.normal, "records": []}
+        d = {"name": name, "star": False, "status": HabitStatus.ACTIVE, "records": []}
         self.habits.append(d)
 
     async def remove(self, item: H) -> None:
@@ -109,8 +109,13 @@ class UserStorage[L: HabitList](Protocol):
         user_habit_list = await self.get_user_habit_list(user)
         if user_habit_list:
             # Assuming merge logic is handled elsewhere or not needed
-            await self.save_user_habit_list(user, other)
-            return other
+            merged_habits = set(user_habit_list.habits).symmetric_difference(set(other.habits))
+            for self_habit in user_habit_list.habits:
+                for other_habit in other.habits:
+                    if self_habit == other_habit:
+                        new_habit = await self_habit.merge(other_habit)
+                        merged_habits.add(new_habit)
+            return type(user_habit_list)({"habits": [h.data for h in merged_habits]})
         else:
             await self.save_user_habit_list(user, other)
             return other
