@@ -58,6 +58,12 @@ class HabitList(Protocol[H]):
     @property
     def habits(self) -> List[H]: ...
 
+    @property
+    def order(self) -> List[str]: ...
+
+    @order.setter
+    def order(self, value: List[str]) -> None: ...
+
     async def add(self, name: str) -> None: ...
 
     async def remove(self, item: H) -> None: ...
@@ -180,12 +186,10 @@ class EnhancedHabitList(HabitList[EnhancedHabit]):
         return None
 
     async def merge(self, other: 'EnhancedHabitList') -> 'EnhancedHabitList':
-        result = set(self._habits).symmetric_difference(set(other._habits))
-
-        for self_habit in self._habits:
-            for other_habit in other._habits:
-                if self_habit.id == other_habit.id:
-                    new_habit = await self_habit.merge(other_habit)
-                    result.add(new_habit)
-
-        return EnhancedHabitList(list(result), self._order)
+        result_habits = {h.id: h for h in self._habits}
+        for other_habit in other._habits:
+            if other_habit.id in result_habits:
+                result_habits[other_habit.id] = await result_habits[other_habit.id].merge(other_habit)
+            else:
+                result_habits[other_habit.id] = other_habit
+        return EnhancedHabitList(list(result_habits.values()), self._order)
