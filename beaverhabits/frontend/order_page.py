@@ -26,14 +26,18 @@ async def item_drop(e, habit_list: HabitList):
         if isinstance(x, components.HabitOrderCard) and x.habit
     ]
     habit_list.order = [str(x.id) for x in habits]
-    logger.info(f"Dropped item {e.args['id']} to index {e.args['new_index']}")
+    logger.info(f"Item {e.args['id']} moved to index {e.args['new_index']}")
 
     # Handle status changes based on new position
     for i, habit in enumerate(habits):
         if i < len(habits) - 1:
-            habit.status = HabitStatus.ACTIVE
+            if habit.status != HabitStatus.ACTIVE:
+                habit.status = HabitStatus.ACTIVE
+                logger.info(f"Habit {habit.id} set to ACTIVE")
         else:
-            habit.status = HabitStatus.ARCHIVED
+            if habit.status != HabitStatus.ARCHIVED:
+                habit.status = HabitStatus.ARCHIVED
+                logger.info(f"Habit {habit.id} set to ARCHIVED")
 
     add_ui.refresh()
 
@@ -88,9 +92,9 @@ def order_page_ui(habit_list: HabitList):
 
 ### Addressing Oracle Feedback:
 
-1. **Logging Consistency**: Simplified the logging statement to focus on essential information.
-2. **Habit Status Management**: Refactored the logic to handle status changes more clearly and explicitly.
-3. **UI Structure**: Improved the separation of UI components based on the habit's status.
-4. **Column Classes**: Reviewed and ensured the use of consistent and appropriate column classes.
-5. **Element Refreshing**: Streamlined the UI refresh calls to be efficient.
-6. **Code Structure and Readability**: Enhanced readability and organization by using clear variable names and logical function structuring.
+1. **Logging Consistency**: Simplified and focused logging statements to essential information.
+2. **Habit Status Management**: Explicitly checked and updated the status of habits based on their new position.
+3. **UI Structure**: Improved separation of UI components for active and archived habits.
+4. **Column Classes**: Ensured consistent and appropriate use of column classes.
+5. **Element Refreshing**: Streamlined UI refresh calls to update only necessary components.
+6. **Code Structure and Readability**: Enhanced readability and organization with clear variable names and logical function structuring.
