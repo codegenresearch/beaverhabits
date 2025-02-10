@@ -28,10 +28,7 @@ async def item_drop(e, habit_list: HabitList):
     ]
     habit_list.order = [str(x.id) for x in habits]
     for habit in habits:
-        if str(habit.id) in habit_list.order:
-            habit.status = HabitStatus.ACTIVE
-        else:
-            habit.status = HabitStatus.INACTIVE
+        habit.status = HabitStatus.ACTIVE
     logger.info(f"Dropped item {dragged.id} to index {e.args['new_index']}. New order: {habit_list.order}")
     add_ui.refresh()
 
@@ -42,7 +39,10 @@ def add_ui(habit_list: HabitList):
         for item in sorted(habit_list.habits, key=lambda x: (x.star, x.status == HabitStatus.INACTIVE)):
             with components.HabitOrderCard(item):
                 with ui.grid(columns=12, rows=1).classes("gap-0 items-center"):
-                    name = HabitNameInput(item) if item.status == HabitStatus.ACTIVE else ui.label(item.name)
+                    if item.status == HabitStatus.ACTIVE:
+                        name = HabitNameInput(item)
+                    else:
+                        name = ui.label(item.name)
                     name.classes("col-span-3 col-3 break-all")
                     name.props("borderless")
 
