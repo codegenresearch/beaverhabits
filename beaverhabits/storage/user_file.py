@@ -12,11 +12,6 @@ KEY_NAME = "data"
 
 
 class UserDiskStorage(UserStorage[DictHabitList]):
-
-    def _get_persistent_dict(self, user: User) -> PersistentDict:
-        path = Path(f"{USER_DATA_FOLDER}/{str(user.email)}.json")
-        return PersistentDict(path, encoding="utf-8")
-
     async def get_user_habit_list(self, user: User) -> Optional[DictHabitList]:
         d = self._get_persistent_dict(user).get(KEY_NAME)
         if not d:
@@ -27,11 +22,6 @@ class UserDiskStorage(UserStorage[DictHabitList]):
         d = self._get_persistent_dict(user)
         d[KEY_NAME] = habit_list.data
 
-    async def merge_user_habit_list(
-        self, user: User, other: DictHabitList
-    ) -> DictHabitList:
-        current = await self.get_user_habit_list(user)
-        if current is None:
-            return other
-
-        return await current.merge(other)
+    def _get_persistent_dict(self, user: User) -> PersistentDict:
+        path = Path(f"{USER_DATA_FOLDER}/{str(user.email)}.json")
+        return PersistentDict(path, encoding="utf-8")
