@@ -16,20 +16,7 @@ class DictStorage:
 
 @dataclass
 class DictRecord(CheckedRecord, DictStorage):
-    """
-    # Read (d1~d3)
-    persistent    ->     memory      ->     view
-    d0: [x]              d0: [x]
-                                            d1: [ ]
-    d2: [x]              d2: [x]            d2: [x]
-                                            d3: [ ]
-
-    # Update:
-    view(update)  ->     memory      ->     persistent
-    d1: [ ]
-    d2: [ ]              d2: [ ]            d2: [x]
-    d3: [x]              d3: [x]            d3: [ ]
-    """
+    """\n    # Read (d1~d3)\n    persistent    ->     memory      ->     view\n    d0: [x]              d0: [x]\n                                            d1: [ ]\n    d2: [x]              d2: [x]            d2: [x]\n                                            d3: [ ]\n\n    # Update:\n    view(update)  ->     memory      ->     persistent\n    d1: [ ]\n    d2: [ ]              d2: [ ]            d2: [x]\n    d3: [x]              d3: [x]            d3: [ ]\n    """
 
     @property
     def day(self) -> datetime.date:
@@ -52,10 +39,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
         if "id" not in self.data:
             self.data["id"] = generate_short_hash(self.name)
         return self.data["id"]
-
-    @id.setter
-    def id(self, value: str) -> None:
-        self.data["id"] = value
 
     @property
     def name(self) -> str:
@@ -84,44 +67,9 @@ class DictHabit(Habit[DictRecord], DictStorage):
             data = {"day": day.strftime(DAY_MASK), "done": done}
             self.data["records"].append(data)
 
-    async def merge(self, other: "DictHabit") -> "DictHabit":
-        self_ticks = {r.data["day"] for r in self.records if r.done}
-        other_ticks = {r.data["day"] for r in other.records if r.done}
-        result = sorted(list(self_ticks | other_ticks))
-
-        d = {
-            "name": self.name,
-            "records": [{"day": day, "done": True} for day in result],
-        }
-        return DictHabit(d)
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, DictHabit) and self.id == other.id
-
-    def __hash__(self) -> int:
-        return hash(self.id)
-
 
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
-    """Dict storage for HabitList
-
-    Example:
-    {
-        "habits": [
-            {
-                "name": "habit1",
-                "records": [
-                    {"day": "2021-01-01", "done": true},
-                    {"day": "2021-01-02", "done": false}
-                ]
-            },
-            {
-                "name": "habit2",
-                "records": []
-            ...
-    """
-
     @property
     def habits(self) -> list[DictHabit]:
         habits = [DictHabit(d) for d in self.data["habits"]]
@@ -139,15 +87,3 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 
     async def remove(self, item: DictHabit) -> None:
         self.data["habits"].remove(item.data)
-
-    async def merge(self, other: "DictHabitList") -> "DictHabitList":
-        result = set(self.habits).symmetric_difference(set(other.habits))
-
-        # Merge the habit if it exists
-        for self_habit in self.habits:
-            for other_habit in other.habits:
-                if self_habit == other_habit:
-                    new_habit = await self_habit.merge(other_habit)
-                    result.add(new_habit)
-
-        return DictHabitList({"habits": [h.data for h in result]})
