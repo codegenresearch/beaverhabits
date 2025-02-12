@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Optional
 
 from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList
 from beaverhabits.utils import generate_short_hash
@@ -16,20 +16,7 @@ class DictStorage:
 
 @dataclass
 class DictRecord(CheckedRecord, DictStorage):
-    """
-    # Read (d1~d3)
-    persistent    ->     memory      ->     view
-    d0: [x]              d0: [x]
-                                            d1: [ ]
-    d2: [x]              d2: [x]            d2: [x]
-                                            d3: [ ]
-
-    # Update:
-    view(update)  ->     memory      ->     persistent
-    d1: [ ]
-    d2: [ ]              d2: [ ]            d2: [x]
-    d3: [x]              d3: [x]            d3: [ ]
-    """
+    """\n    # Read (d1~d3)\n    persistent    ->     memory      ->     view\n    d0: [x]              d0: [x]\n                                            d1: [ ]\n    d2: [x]              d2: [x]            d2: [x]\n                                            d3: [ ]\n\n    # Update:\n    view(update)  ->     memory      ->     persistent\n    d1: [ ]\n    d2: [ ]              d2: [ ]            d2: [x]\n    d3: [x]              d3: [x]            d3: [ ]\n    """
 
     @property
     def day(self) -> datetime.date:
@@ -103,11 +90,6 @@ class DictHabit(Habit[DictRecord], DictStorage):
     def __hash__(self) -> int:
         return hash(self.id)
 
-    def __str__(self) -> str:
-        return f"{self.name}<{self.id}>"
-
-    __repr__ = __str__
-
 
 @dataclass
 class DictHabitList(HabitList[DictHabit], DictStorage):
@@ -115,26 +97,8 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
     def habits(self) -> list[DictHabit]:
         habits = [DictHabit(d) for d in self.data["habits"]]
-        if self.order:
-            habits.sort(
-                key=lambda x: (
-                    self.order.index(str(x.id))
-                    if str(x.id) in self.order
-                    else float("inf")
-                )
-            )
-        else:
-            habits.sort(key=lambda x: x.star, reverse=True)
-
+        habits.sort(key=lambda x: x.star, reverse=True)
         return habits
-
-    @property
-    def order(self) -> List[str]:
-        return self.data.get("order", [])
-
-    @order.setter
-    def order(self, value: List[str]) -> None:
-        self.data["order"] = value
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
         for habit in self.habits:
