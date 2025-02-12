@@ -1,77 +1,140 @@
 import datetime
-from typing import List, Optional, Protocol
+from typing import List, Optional, Protocol, TypeVar
 
 from beaverhabits.app.db import User
+from beaverhabits.utils import logger
 
+R = TypeVar('R', bound='CheckedRecord')
+H = TypeVar('H', bound='Habit')
+L = TypeVar('L', bound='HabitList')
 
 class CheckedRecord(Protocol):
     @property
-    def day(self) -> datetime.date: ...
+    def day(self) -> datetime.date:
+        """Get the day of the record."""
+        ...
 
     @property
-    def done(self) -> bool: ...
+    def done(self) -> bool:
+        """Check if the record is marked as done."""
+        ...
 
     @done.setter
-    def done(self, value: bool) -> None: ...
+    def done(self, value: bool) -> None:
+        """Set the done status of the record."""
+        ...
 
     def __str__(self):
+        """String representation of the record."""
         return f"{self.day} {'[x]' if self.done else '[ ]'}"
 
     __repr__ = __str__
 
 
-class Habit[R: CheckedRecord](Protocol):
+class Habit(Protocol):
     @property
-    def id(self) -> str | int: ...
+    def id(self) -> str:
+        """Get the unique identifier of the habit."""
+        ...
 
     @property
-    def name(self) -> str: ...
+    def name(self) -> str:
+        """Get the name of the habit."""
+        ...
 
     @name.setter
-    def name(self, value: str) -> None: ...
+    def name(self, value: str) -> None:
+        """Set the name of the habit."""
+        ...
 
     @property
-    def star(self) -> bool: ...
+    def star(self) -> bool:
+        """Check if the habit is starred."""
+        ...
 
     @star.setter
-    def star(self, value: int) -> None: ...
+    def star(self, value: bool) -> None:
+        """Set the star status of the habit."""
+        ...
 
     @property
-    def records(self) -> List[R]: ...
+    def records(self) -> List[R]:
+        """Get the list of records associated with the habit."""
+        ...
 
     @property
     def ticked_days(self) -> list[datetime.date]:
+        """Get the list of days when the habit was marked as done."""
         return [r.day for r in self.records if r.done]
 
-    async def tick(self, day: datetime.date, done: bool) -> None: ...
+    async def tick(self, day: datetime.date, done: bool) -> None:
+        """Mark the habit as done or not for a specific day."""
+        ...
+
+    async def merge(self, other: 'Habit') -> 'Habit':
+        """Merge the current habit with another habit."""
+        ...
 
     def __str__(self):
+        """String representation of the habit."""
         return self.name
 
     __repr__ = __str__
 
 
-class HabitList[H: Habit](Protocol):
-
+class HabitList(Protocol):
     @property
-    def habits(self) -> List[H]: ...
+    def habits(self) -> List[H]:
+        """Get the list of habits."""
+        ...
 
-    async def add(self, name: str) -> None: ...
+    async def add(self, name: str) -> None:
+        """Add a new habit to the list."""
+        ...
 
-    async def remove(self, item: H) -> None: ...
+    async def remove(self, item: H) -> None:
+        """Remove a habit from the list."""
+        ...
 
-    async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
+    async def get_habit_by(self, habit_id: str) -> Optional[H]:
+        """Get a habit by its unique identifier."""
+        ...
+
+    async def merge(self, other: 'HabitList') -> 'HabitList':
+        """Merge the current habit list with another habit list."""
+        ...
 
 
-class SessionStorage[L: HabitList](Protocol):
-    def get_user_habit_list(self) -> Optional[L]: ...
+class SessionStorage(Protocol):
+    def get_user_habit_list(self) -> Optional[L]:
+        """Get the habit list for the current session."""
+        ...
 
-    def save_user_habit_list(self, habit_list: L) -> None: ...
+    def save_user_habit_list(self, habit_list: L) -> None:
+        """Save the habit list for the current session."""
+        ...
 
 
-class UserStorage[L: HabitList](Protocol):
-    async def get_user_habit_list(self, user: User) -> Optional[L]: ...
+class UserStorage(Protocol):
+    async def get_user_habit_list(self, user: User) -> Optional[L]:
+        """Get the habit list for a specific user."""
+        ...
 
-    async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
+    async def save_user_habit_list(self, user: User, habit_list: L) -> None:
+        """Save the habit list for a specific user."""
+        ...
 
-    async def merge_user_habit_list(self, user: User, other: L) -> L: ...
+    async def merge_user_habits(self, user: User, other_user: User) -> None:
+        """Merge the habit lists of two users."""
+        try:
+            user_habit_list = await self.get_user_habit_list(user)
+            other_user_habit_list = await self.get_user_habit_list(other_user)
+
+            if user_habit_list is None or other_user_habit_list is None:
+                logger.warning("One of the users does not have a habit list.")
+                return
+
+            merged_habit_list = await user_habit_list.merge(other_user_habit_list)
+            await self.save_user_habit_list(user, merged_habit_list)
+        except Exception as e:
+            logger.error(f"Failed to merge user habits: {e}")
