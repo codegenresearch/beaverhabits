@@ -1,9 +1,13 @@
 from dataclasses import dataclass, field
 import datetime
 from typing import List, Optional
+import logging
 
-from beaverhabits.storage.storage import CheckedRecord, HabitStatus, Habit, HabitList
+from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList, HabitStatus
 from beaverhabits.utils import generate_short_hash
+from nicegui import ui
+
+logger = logging.getLogger(__name__)
 
 DAY_MASK = "%Y-%m-%d"
 MONTH_MASK = "%Y/%m"
@@ -16,20 +20,7 @@ class DictStorage:
 
 @dataclass
 class DictRecord(CheckedRecord, DictStorage):
-    """
-    # Read (d1~d3)
-    persistent    ->     memory      ->     view
-    d0: [x]              d0: [x]
-                                            d1: [ ]
-    d2: [x]              d2: [x]            d2: [x]
-                                            d3: [ ]
-
-    # Update:
-    view(update)  ->     memory      ->     persistent
-    d1: [ ]
-    d2: [ ]              d2: [ ]            d2: [x]
-    d3: [x]              d3: [x]            d3: [ ]
-    """
+    """\n    # Read (d1~d3)\n    persistent    ->     memory      ->     view\n    d0: [x]              d0: [x]\n                                            d1: [ ]\n    d2: [x]              d2: [x]            d2: [x]\n                                            d3: [ ]\n\n    # Update:\n    view(update)  ->     memory      ->     persistent\n    d1: [ ]\n    d2: [ ]              d2: [ ]            d2: [x]\n    d3: [x]              d3: [x]            d3: [ ]\n    """
 
     @property
     def day(self) -> datetime.date:
@@ -43,6 +34,7 @@ class DictRecord(CheckedRecord, DictStorage):
     @done.setter
     def done(self, value: bool) -> None:
         self.data["done"] = value
+        logger.info(f"Updated record for day {self.day}: done={value}")
 
 
 @dataclass
@@ -64,26 +56,29 @@ class DictHabit(Habit[DictRecord], DictStorage):
     @name.setter
     def name(self, value: str) -> None:
         self.data["name"] = value
+        logger.info(f"Updated habit name: {self.name}")
 
     @property
     def star(self) -> bool:
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         self.data["star"] = value
-
-    @property
-    def status(self) -> HabitStatus:
-        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE))
-
-    @status.setter
-    def status(self, value: HabitStatus) -> None:
-        self.data["status"] = value
+        logger.info(f"Updated habit star status: {self.star}")
 
     @property
     def records(self) -> list[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
+
+    @property
+    def status(self) -> HabitStatus:
+        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE.value))
+
+    @status.setter
+    def status(self, value: HabitStatus) -> None:
+        self.data["status"] = value.value
+        logger.info(f"Updated habit status: {self.status}")
 
     async def tick(self, day: datetime.date, done: bool) -> None:
         if record := next((r for r in self.records if r.day == day), None):
@@ -91,6 +86,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
         else:
             data = {"day": day.strftime(DAY_MASK), "done": done}
             self.data["records"].append(data)
+        logger.info(f"Tick updated for habit {self.id}: day={day}, done={done}")
+        ui.update()
 
     async def merge(self, other: "DictHabit") -> "DictHabit":
         self_ticks = {r.day for r in self.records if r.done}
@@ -103,6 +100,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
                 {"day": day.strftime(DAY_MASK), "done": True} for day in result
             ],
         }
+        logger.info(f"Merged habit {self.id} with another habit")
         return DictHabit(d)
 
     def __eq__(self, other: object) -> bool:
@@ -122,18 +120,16 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
     def habits(self) -> list[DictHabit]:
         habits = [DictHabit(d) for d in self.data["habits"]]
-        status = {HabitStatus.ACTIVE: 0, HabitStatus.ARCHIVED: 1}
-
-        # Filter out valid habits
-        habits = [x for x in habits if x.status in status]
 
         # Sort by order
-        if o := self.order:
+        if self.order:
             habits.sort(
-                key=lambda x: (o.index(str(x.id)) if str(x.id) in o else float("inf"))
+                key=lambda x: (
+                    self.order.index(str(x.id))
+                    if str(x.id) in self.order
+                    else float("inf")
+                )
             )
-        # Sort by status
-        habits.sort(key=lambda x: status.get(x.status, float("inf")))
 
         return habits
 
@@ -144,18 +140,23 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     @order.setter
     def order(self, value: List[str]) -> None:
         self.data["order"] = value
+        logger.info(f"Updated habit list order: {self.order}")
 
     async def get_habit_by(self, habit_id: str) -> Optional[DictHabit]:
         for habit in self.habits:
             if habit.id == habit_id:
+                logger.info(f"Retrieved habit by ID {habit_id}: {habit}")
                 return habit
+        logger.info(f"Habit with ID {habit_id} not found")
 
     async def add(self, name: str) -> None:
-        d = {"name": name, "records": [], "id": generate_short_hash(name)}
+        d = {"name": name, "records": [], "id": generate_short_hash(name), "status": HabitStatus.ACTIVE.value}
         self.data["habits"].append(d)
+        logger.info(f"Added new habit: {name} with ID {d['id']}")
 
     async def remove(self, item: DictHabit) -> None:
         self.data["habits"].remove(item.data)
+        logger.info(f"Removed habit: {item}")
 
     async def merge(self, other: "DictHabitList") -> "DictHabitList":
         result = set(self.habits).symmetric_difference(set(other.habits))
@@ -166,5 +167,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
                 if self_habit == other_habit:
                     new_habit = await self_habit.merge(other_habit)
                     result.add(new_habit)
+                    logger.info(f"Merged habit {self_habit.id} with another habit")
 
+        logger.info("Merged habit lists")
         return DictHabitList({"habits": [h.data for h in result]})
