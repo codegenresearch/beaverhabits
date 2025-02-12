@@ -1,8 +1,10 @@
 import datetime
-from typing import List, Optional, Protocol
+from typing import List, Optional, Protocol, TypeVar
+from pydantic import BaseModel, validator
 
-from beaverhabits.app.db import User
-
+H = TypeVar('H', bound='Habit')
+R = TypeVar('R', bound='CheckedRecord')
+L = TypeVar('L', bound='HabitList')
 
 class CheckedRecord(Protocol):
     @property
@@ -20,7 +22,7 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class Habit[R: CheckedRecord](Protocol):
+class Habit(Protocol):
     @property
     def id(self) -> str | int: ...
 
@@ -51,16 +53,10 @@ class Habit[R: CheckedRecord](Protocol):
     __repr__ = __str__
 
 
-class HabitList[H: Habit](Protocol):
+class HabitList(Protocol):
 
     @property
     def habits(self) -> List[H]: ...
-
-    @property
-    def order(self) -> List[str]: ...
-
-    @order.setter
-    def order(self, value: List[str]) -> None: ...
 
     async def add(self, name: str) -> None: ...
 
@@ -69,15 +65,26 @@ class HabitList[H: Habit](Protocol):
     async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
 
 
-class SessionStorage[L: HabitList](Protocol):
+class SessionStorage(Protocol):
     def get_user_habit_list(self) -> Optional[L]: ...
 
     def save_user_habit_list(self, habit_list: L) -> None: ...
 
 
-class UserStorage[L: HabitList](Protocol):
+class UserStorage(Protocol):
     async def get_user_habit_list(self, user: User) -> Optional[L]: ...
 
     async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
 
     async def merge_user_habit_list(self, user: User, other: L) -> L: ...
+
+class HabitAddCard(BaseModel):
+    name: str
+
+    @validator('name')
+    def name_must_be_valid(cls, v):
+        if not v.strip():
+            raise ValueError('Habit name cannot be empty or whitespace.')
+        if len(v) > 100:
+            raise ValueError('Habit name must be less than 100 characters.')
+        return v
