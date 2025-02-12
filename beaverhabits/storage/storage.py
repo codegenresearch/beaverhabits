@@ -1,8 +1,8 @@
 import datetime
-from enum import Enum
 from typing import List, Optional, Protocol
 
 from beaverhabits.app.db import User
+from beaverhabits.storage.storage import HabitStatus
 
 
 class CheckedRecord(Protocol):
@@ -21,12 +21,6 @@ class CheckedRecord(Protocol):
     __repr__ = __str__
 
 
-class HabitStatus(Enum):
-    ACTIVE = "normal"
-    ARCHIVED = "archive"
-    SOLF_DELETED = "soft_delete"
-
-
 class Habit[R: CheckedRecord](Protocol):
     @property
     def id(self) -> str | int: ...
@@ -41,16 +35,16 @@ class Habit[R: CheckedRecord](Protocol):
     def star(self) -> bool: ...
 
     @star.setter
-    def star(self, value: int) -> None: ...
-
-    @property
-    def records(self) -> List[R]: ...
+    def star(self, value: bool) -> None: ...
 
     @property
     def status(self) -> HabitStatus: ...
 
     @status.setter
     def status(self, value: HabitStatus) -> None: ...
+
+    @property
+    def records(self) -> List[R]: ...
 
     @property
     def ticked_days(self) -> list[datetime.date]:
@@ -80,6 +74,8 @@ class HabitList[H: Habit](Protocol):
     async def remove(self, item: H) -> None: ...
 
     async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
+
+    async def merge(self, other: 'HabitList') -> 'HabitList': ...
 
 
 class SessionStorage[L: HabitList](Protocol):
