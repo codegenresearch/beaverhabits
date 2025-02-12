@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import datetime
 from typing import List, Optional
 
-from beaverhabits.storage.storage import CheckedRecord, HabitStatus, Habit, HabitList
+from beaverhabits.storage.storage import CheckedRecord, Habit, HabitList, HabitStatus
 from beaverhabits.utils import generate_short_hash
 
 DAY_MASK = "%Y-%m-%d"
@@ -16,20 +16,7 @@ class DictStorage:
 
 @dataclass
 class DictRecord(CheckedRecord, DictStorage):
-    """
-    # Read (d1~d3)
-    persistent    ->     memory      ->     view
-    d0: [x]              d0: [x]
-                                            d1: [ ]
-    d2: [x]              d2: [x]            d2: [x]
-                                            d3: [ ]
-
-    # Update:
-    view(update)  ->     memory      ->     persistent
-    d1: [ ]
-    d2: [ ]              d2: [ ]            d2: [x]
-    d3: [x]              d3: [x]            d3: [ ]
-    """
+    """\n    # Read (d1~d3)\n    persistent    ->     memory      ->     view\n    d0: [x]              d0: [x]\n                                            d1: [ ]\n    d2: [x]              d2: [x]            d2: [x]\n                                            d3: [ ]\n\n    # Update:\n    view(update)  ->     memory      ->     persistent\n    d1: [ ]\n    d2: [ ]              d2: [ ]            d2: [x]\n    d3: [x]              d3: [x]            d3: [ ]\n    """
 
     @property
     def day(self) -> datetime.date:
@@ -70,20 +57,20 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.data.get("star", False)
 
     @star.setter
-    def star(self, value: int) -> None:
+    def star(self, value: bool) -> None:
         self.data["star"] = value
-
-    @property
-    def status(self) -> HabitStatus:
-        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE))
-
-    @status.setter
-    def status(self, value: HabitStatus) -> None:
-        self.data["status"] = value
 
     @property
     def records(self) -> list[DictRecord]:
         return [DictRecord(d) for d in self.data["records"]]
+
+    @property
+    def status(self) -> HabitStatus:
+        return HabitStatus(self.data.get("status", HabitStatus.ACTIVE.value))
+
+    @status.setter
+    def status(self, value: HabitStatus) -> None:
+        self.data["status"] = value.value
 
     async def tick(self, day: datetime.date, done: bool) -> None:
         if record := next((r for r in self.records if r.day == day), None):
@@ -102,6 +89,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
             "records": [
                 {"day": day.strftime(DAY_MASK), "done": True} for day in result
             ],
+            "status": self.status.value
         }
         return DictHabit(d)
 
@@ -112,7 +100,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return hash(self.id)
 
     def __str__(self) -> str:
-        return f"{self.name}<{self.id}>"
+        return f"{self.name}<{self.id}> ({self.status})"
 
     __repr__ = __str__
 
@@ -122,18 +110,16 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     @property
     def habits(self) -> list[DictHabit]:
         habits = [DictHabit(d) for d in self.data["habits"]]
-        status = {HabitStatus.ACTIVE: 0, HabitStatus.ARCHIVED: 1}
-
-        # Filter out valid habits
-        habits = [x for x in habits if x.status in status]
 
         # Sort by order
-        if o := self.order:
+        if self.order:
             habits.sort(
-                key=lambda x: (o.index(str(x.id)) if str(x.id) in o else float("inf"))
+                key=lambda x: (
+                    self.order.index(str(x.id))
+                    if str(x.id) in self.order
+                    else float("inf")
+                )
             )
-        # Sort by status
-        habits.sort(key=lambda x: status.get(x.status, float("inf")))
 
         return habits
 
@@ -151,7 +137,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
                 return habit
 
     async def add(self, name: str) -> None:
-        d = {"name": name, "records": [], "id": generate_short_hash(name)}
+        d = {"name": name, "records": [], "id": generate_short_hash(name), "status": HabitStatus.ACTIVE.value}
         self.data["habits"].append(d)
 
     async def remove(self, item: DictHabit) -> None:
