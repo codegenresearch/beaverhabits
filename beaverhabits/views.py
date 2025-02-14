@@ -8,12 +8,12 @@ from fastapi import HTTPException
 from nicegui import ui
 
 from beaverhabits.app.db import User
-from beaverhabits.storage import get_user_dict_storage, session_storage
+from beaverhabits.storage import get_user_storage, session_storage
 from beaverhabits.storage.dict import DAY_MASK, DictHabitList
 from beaverhabits.storage.storage import Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 
-user_storage = get_user_dict_storage()
+user_storage = get_user_storage()
 
 
 def dummy_habit_list(days: List[datetime.date]):
@@ -31,12 +31,12 @@ def dummy_habit_list(days: List[datetime.date]):
     return DictHabitList({"habits": items})
 
 
-def get_session_habit_list() -> HabitList | None:
-    return session_storage.get_user_habit_list()
+async def get_session_habit_list() -> HabitList | None:
+    return await session_storage.get_user_habit_list()
 
 
 async def get_session_habit(habit_id: str) -> Habit:
-    habit_list = get_session_habit_list()
+    habit_list = await get_session_habit_list()
     if habit_list is None:
         raise HTTPException(status_code=404, detail="Habit list not found")
 
@@ -48,12 +48,15 @@ async def get_session_habit(habit_id: str) -> Habit:
 
 
 def get_or_create_session_habit_list(days: List[datetime.date]) -> HabitList:
-    if (habit_list := get_session_habit_list()) is not None:
+    async def _get_or_create_session_habit_list():
+        if (habit_list := await get_session_habit_list()) is not None:
+            return habit_list
+
+        habit_list = dummy_habit_list(days)
+        await session_storage.save_user_habit_list(habit_list)
         return habit_list
 
-    habit_list = dummy_habit_list(days)
-    session_storage.save_user_habit_list(habit_list)
-    return habit_list
+    return _get_or_create_session_habit_list()
 
 
 async def get_user_habit_list(user: User) -> HabitList | None:
