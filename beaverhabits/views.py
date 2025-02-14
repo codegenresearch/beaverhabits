@@ -8,12 +8,12 @@ from fastapi import HTTPException
 from nicegui import ui
 
 from beaverhabits.app.db import User
-from beaverhabits.storage import get_user_dict_storage, session_storage
+from beaverhabits.storage import get_user_storage, session_storage
 from beaverhabits.storage.dict import DAY_MASK, DictHabitList
 from beaverhabits.storage.storage import Habit, HabitList
 from beaverhabits.utils import generate_short_hash
 
-user_storage = get_user_dict_storage()
+user_storage = get_user_storage()
 
 
 def dummy_habit_list(days: List[datetime.date]):
@@ -57,7 +57,11 @@ def get_or_create_session_habit_list(days: List[datetime.date]) -> HabitList:
 
 
 async def get_user_habit_list(user: User) -> HabitList | None:
-    return await user_storage.get_user_habit_list(user)
+    try:
+        return await user_storage.get_user_habit_list(user)
+    except Exception as e:
+        print(f"Error fetching user habit list: {e}")
+        return None
 
 
 async def get_user_habit(user: User, habit_id: str) -> Habit:
@@ -80,20 +84,29 @@ async def get_or_create_user_habit_list(
         return habit_list
 
     habit_list = dummy_habit_list(days)
-    await user_storage.save_user_habit_list(user, habit_list)
+    try:
+        await user_storage.save_user_habit_list(user, habit_list)
+    except Exception as e:
+        print(f"Error saving user habit list: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create habit list")
+
     return habit_list
 
 
 async def export_user_habit_list(habit_list: HabitList, user_identify: str) -> None:
-    # json to binary
-    if isinstance(habit_list, DictHabitList):
-        data = {
-            "user_email": user_identify,
-            "exported_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            **habit_list.data,
-        }
-        binary_data = json.dumps(data).encode()
-        file_name = f"habits_{int(float(time.time()))}.json"
-        ui.download(binary_data, file_name)
-    else:
+    try:
+        # json to binary
+        if isinstance(habit_list, DictHabitList):
+            data = {
+                "user_email": user_identify,
+                "exported_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                **habit_list.data,
+            }
+            binary_data = json.dumps(data).encode()
+            file_name = f"habits_{int(float(time.time()))}.json"
+            ui.download(binary_data, file_name)
+        else:
+            ui.notification("Export failed, please try again later.")
+    except Exception as e:
+        print(f"Error exporting habit list: {e}")
         ui.notification("Export failed, please try again later.")
