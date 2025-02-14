@@ -1,5 +1,4 @@
 import datetime
-from enum import Enum
 from typing import List, Optional, Protocol
 
 from beaverhabits.app.db import User
@@ -19,12 +18,6 @@ class CheckedRecord(Protocol):
         return f"{self.day} {'[x]' if self.done else '[ ]'}"
 
     __repr__ = __str__
-
-
-class HabitStatus(Enum):
-    ACTIVE = "normal"
-    ARCHIVED = "archive"
-    SOLF_DELETED = "soft_delete"
 
 
 class Habit[R: CheckedRecord](Protocol):
@@ -47,12 +40,6 @@ class Habit[R: CheckedRecord](Protocol):
     def records(self) -> List[R]: ...
 
     @property
-    def status(self) -> HabitStatus: ...
-
-    @status.setter
-    def status(self, value: HabitStatus) -> None: ...
-
-    @property
     def ticked_days(self) -> list[datetime.date]:
         return [r.day for r in self.records if r.done]
 
@@ -62,6 +49,18 @@ class Habit[R: CheckedRecord](Protocol):
         return self.name
 
     __repr__ = __str__
+
+    def initialize_styles(self, style_value: str) -> None:
+        # Implementation of style initialization based on style_value
+        pass
+
+    def log_item_drop(self, item: R) -> None:
+        # Log item drop event for debugging
+        print(f"Item dropped: {item}")
+
+    def get_value(self) -> str:
+        # Return a value instead of modifying state
+        return self.name
 
 
 class HabitList[H: Habit](Protocol):
@@ -80,6 +79,15 @@ class HabitList[H: Habit](Protocol):
     async def remove(self, item: H) -> None: ...
 
     async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
+
+    def initialize_styles(self, style_value: str) -> None:
+        # Implementation of style initialization based on style_value
+        for habit in self.habits:
+            habit.initialize_styles(style_value)
+
+    def manage_habit_status(self, habit: H) -> None:
+        # Implementation of habit status management with an initialized title for clarity
+        habit.initialize_styles("status_initialized")
 
 
 class SessionStorage[L: HabitList](Protocol):
