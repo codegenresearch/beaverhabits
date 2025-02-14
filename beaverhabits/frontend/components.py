@@ -1,7 +1,7 @@
 import calendar
 import datetime
-from dataclasses import dataclass
 from typing import Callable, Optional
+from dataclasses import dataclass
 
 from nicegui import events, ui
 from nicegui.elements.button import Button
@@ -39,17 +39,24 @@ def menu_icon_button(icon_name: str, click: Optional[Callable] = None) -> Button
     return ui.button(icon=icon_name, color=None, on_click=click).props(button_props)
 
 
+@dataclass
+class HabitAddCard:
+    name: str
+    star: bool
+    ticked_days: list[datetime.date]
+
+
 class HabitCheckBox(ui.checkbox):
     def __init__(
         self,
-        habit: Habit,
+        habit_card: HabitAddCard,
         day: datetime.date,
         text: str = "",
         *,
         value: bool = False,
     ) -> None:
         super().__init__(text, value=value, on_change=self._async_task)
-        self.habit = habit
+        self.habit_card = habit_card
         self.day = day
         self._update_style(value)
 
@@ -64,64 +71,48 @@ class HabitCheckBox(ui.checkbox):
 
     async def _async_task(self, e: events.ValueChangeEventArguments):
         self._update_style(e.value)
-        # await asyncio.sleep(5)
-        # ui.notify(f"Asynchronous task started: {self.record}")
-        await self.habit.tick(self.day, e.value)
+        await self.habit_card.habit.tick(self.day, e.value)
         logger.info(f"Day {self.day} ticked: {e.value}")
 
 
-class HabitAddCard(ui.card):
-    def __init__(self, habit: Habit):
-        super().__init__()
-        self.habit = habit
-        self.props("flat dense draggable").classes("cursor-grab")
-
-
 class HabitNameInput(ui.input):
-    def __init__(self, habit: Habit) -> None:
-        super().__init__(value=habit.name, on_change=self._async_task)
-        self.habit = habit
-        self.validation = self._validate
-        self.props("flat dense")
+    def __init__(self, habit_card: HabitAddCard) -> None:
+        super().__init__(value=habit_card.name, on_change=self._async_task)
+        self.habit_card = habit_card
+        self.validation = lambda value: "Too long" if len(value) > 18 else None
+        self.props("dense")
 
     async def _async_task(self, e: events.ValueChangeEventArguments):
-        self.habit.name = e.value
+        self.habit_card.name = e.value
         logger.info(f"Habit Name changed to {e.value}")
-
-    def _validate(self, value: str) -> Optional[str]:
-        if not value:
-            return "Name is required"
-        if len(value) > 18:
-            return "Too long"
 
 
 class HabitStarCheckbox(ui.checkbox):
-    def __init__(self, habit: Habit, refresh: Callable) -> None:
-        super().__init__("", value=habit.star, on_change=self._async_task)
-        self.habit = habit
-        self.bind_value(habit, "star")
+    def __init__(self, habit_card: HabitAddCard, refresh: Callable) -> None:
+        super().__init__("", value=habit_card.star, on_change=self._async_task)
+        self.habit_card = habit_card
+        self.bind_value(habit_card.habit, "star")
         self.props(f'checked-icon="{icons.STAR_FULL}" unchecked-icon="{icons.STAR}"')
         self.props("flat fab-mini keep-color color=grey-8")
-
         self.refresh = refresh
 
     async def _async_task(self, e: events.ValueChangeEventArguments):
-        self.habit.star = e.value
+        self.habit_card.star = e.value
         self.refresh()
         logger.info(f"Habit Star changed to {e.value}")
 
 
 class HabitDeleteButton(ui.button):
-    def __init__(self, habit: Habit, habit_list: HabitList, refresh: Callable) -> None:
+    def __init__(self, habit_card: HabitAddCard, habit_list: HabitList, refresh: Callable) -> None:
         super().__init__(on_click=self._async_task, icon=icons.DELETE)
-        self.habit = habit
+        self.habit_card = habit_card
         self.habit_list = habit_list
         self.refresh = refresh
 
     async def _async_task(self):
-        await self.habit_list.remove(self.habit)
+        await self.habit_list.remove(self.habit_card.habit)
         self.refresh()
-        logger.info(f"Deleted habit: {self.habit.name}")
+        logger.info(f"Deleted habit: {self.habit_card.name}")
 
 
 class HabitAddButton(ui.input):
@@ -145,11 +136,10 @@ TODAY = "today"
 
 class HabitDateInput(ui.date):
     def __init__(
-        self, today: datetime.date, habit: Habit, ticked_data: dict[datetime.date, bool]
+        self, today: datetime.date, habit_card: HabitAddCard
     ) -> None:
         self.today = today
-        self.habit = habit
-        self.ticked_data = ticked_data
+        self.habit_card = habit_card
         self.init = True
         self.default_date = today
         super().__init__(self.ticked_days, on_change=self._async_task)
@@ -160,36 +150,26 @@ class HabitDateInput(ui.date):
         qdate_week_first_day = (settings.FIRST_DAY_OF_WEEK + 1) % 7
         self.props(f"first-day-of-week='{qdate_week_first_day}'")
         self.props("today-btn")
-        # self.props(f"subtitle='{habit.name}'")
         self.classes("shadow-none")
 
         self.bind_value_from(self, "ticked_days")
 
     @property
     def ticked_days(self) -> list[str]:
-        result = [k.strftime(DAY_MASK) for k, v in self.ticked_data.items() if v]
-        # workaround to disable auto focus
+        result = [day.strftime(DAY_MASK) for day in self.habit_card.ticked_days]
         result.append(TODAY)
         return result
 
     async def _async_task(self, e: events.ValueChangeEventArguments):
-        old_values = set(self.habit.ticked_days)
-        new_values = set(strptime(x, DAY_MASK).date() for x in e.value if x != TODAY)
+        old_values = set(self.habit_card.habit.ticked_days)
+        new_values = {strptime(day, DAY_MASK).date() for day in e.value if day != TODAY}
 
         for day in new_values - old_values:
-            # self.props(remove="default-date")
-            self.props(f"default-year-month={day.strftime(MONTH_MASK)}")
-            self.ticked_data[day] = True
-
-            await self.habit.tick(day, True)
+            await self.habit_card.habit.tick(day, True)
             logger.info(f"QDate day {day} ticked: True")
 
         for day in old_values - new_values:
-            # self.props(remove="default-date")
-            self.props(f"default-year-month={day.strftime(MONTH_MASK)}")
-            self.ticked_data[day] = False
-
-            await self.habit.tick(day, False)
+            await self.habit_card.habit.tick(day, False)
             logger.info(f"QDate day {day} ticked: False")
 
 
@@ -198,7 +178,6 @@ class CalendarHeatmap:
     """Habit records by weeks"""
 
     today: datetime.date
-
     headers: list[str]
     data: list[list[datetime.date]]
     week_days: list[str]
@@ -240,7 +219,6 @@ class CalendarHeatmap:
         total_weeks: int,
         firstweekday: int = calendar.MONDAY,  # 0 = Monday, 6 = Sunday
     ) -> list[list[datetime.date]]:
-        # Find the last day of the week
         lastweekday = (firstweekday - 1) % 7
         days_delta = (lastweekday - today.weekday()) % 7
         last_date_of_calendar = today + datetime.timedelta(days=days_delta)
@@ -257,13 +235,13 @@ class CalendarHeatmap:
 class CalendarCheckBox(ui.checkbox):
     def __init__(
         self,
-        habit: Habit,
+        habit_card: HabitAddCard,
         day: datetime.date,
         today: datetime.date,
         ticked_data: dict[datetime.date, bool],
         is_bind_data: bool = True,
     ) -> None:
-        self.habit = habit
+        self.habit_card = habit_card
         self.day = day
         self.today = today
         self.ticked_data = ticked_data
@@ -290,40 +268,31 @@ class CalendarCheckBox(ui.checkbox):
         )
 
     async def _async_task(self, e: events.ValueChangeEventArguments):
-        # Update state data
         self.ticked_data[self.day] = e.value
-
-        # Update persistent storage
-        await self.habit.tick(self.day, e.value)
+        await self.habit_card.habit.tick(self.day, e.value)
         logger.info(f"Calendar Day {self.day} ticked: {e.value}")
 
 
 def habit_heat_map(
-    habit: Habit,
+    habit_card: HabitAddCard,
     habit_calendar: CalendarHeatmap,
-    ticked_data: dict[datetime.date, bool] | None = None,
+    ticked_data: Optional[dict[datetime.date, bool]] = None,
 ):
     today = habit_calendar.today
 
-    # Bind to external state data
-    is_bind_data = True
     if ticked_data is None:
-        ticked_data = {x: True for x in habit.ticked_days}
-        is_bind_data = False
+        ticked_data = {day: True for day in habit_card.ticked_days}
 
-    # Headers
-    with ui.row(wrap=False).classes("gap-0"):
-        for header in habit_calendar.headers:
-            header_lable = ui.label(header).classes("text-gray-300 text-center")
-            header_lable.style("width: 20px; line-height: 18px; font-size: 9px;")
-        ui.label().style("width: 22px;")
+    for header in habit_calendar.headers:
+        header_label = ui.label(header).classes("text-gray-300 text-center")
+        header_label.style("width: 20px; line-height: 18px; font-size: 9px;")
+    ui.label().style("width: 22px;")
 
-    # Day matrix
     for i, weekday_days in enumerate(habit_calendar.data):
         with ui.row(wrap=False).classes("gap-0"):
             for day in weekday_days:
                 if day <= habit_calendar.today:
-                    CalendarCheckBox(habit, day, today, ticked_data, is_bind_data)
+                    CalendarCheckBox(habit_card, day, today, ticked_data)
                 else:
                     ui.label().style("width: 20px; height: 20px;")
 
