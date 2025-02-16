@@ -1,96 +1,62 @@
-import datetime
-from enum import Enum
-from typing import List, Optional, Protocol
+from .utils import (
+    print_error,
+    print_success,
+    print_info,
+    print_step,
+    print_debug,
+    print_warning,
+)
+from .loader import Loader, run_with_loader
+import unittest
+from unittest.mock import patch, MagicMock
 
-from beaverhabits.app.db import User
-
-
-class CheckedRecord(Protocol):
-    @property
-    def day(self) -> datetime.date: ...
-
-    @property
-    def done(self) -> bool: ...
-
-    @done.setter
-    def done(self, value: bool) -> None: ...
-
-    def __str__(self):
-        return f"{self.day} {'[x]' if self.done else '[ ]'}"
-
-    __repr__ = __str__
-
-
-class HabitStatus(Enum):
-    ACTIVE = "normal"
-    ARCHIVED = "archive"
-    SOLF_DELETED = "soft_delete"
+__all__ = [
+    "print_error",
+    "print_success",
+    "print_info",
+    "print_step",
+    "print_debug",
+    "print_warning",
+    "Loader",
+    "run_with_loader",
+]
 
 
-class Habit[R: CheckedRecord](Protocol):
-    @property
-    def id(self) -> str | int: ...
+class TestLoader(unittest.TestCase):
+    @patch("click.echo")
+    def test_loader_start_and_stop(self, mock_echo):
+        loader = Loader()
+        loader.start()
+        loader.stop()
+        self.assertTrue(mock_echo.called)
 
-    @property
-    def name(self) -> str: ...
+    @patch("click.echo")
+    def test_run_with_loader(self, mock_echo):
+        def mock_function():
+            return "Result"
 
-    @name.setter
-    def name(self, value: str) -> None: ...
-
-    @property
-    def star(self) -> bool: ...
-
-    @star.setter
-    def star(self, value: int) -> None: ...
-
-    @property
-    def records(self) -> List[R]: ...
-
-    @property
-    def status(self) -> HabitStatus: ...
-
-    @status.setter
-    def status(self, value: HabitStatus) -> None: ...
-
-    @property
-    def ticked_days(self) -> list[datetime.date]:
-        return [r.day for r in self.records if r.done]
-
-    async def tick(self, day: datetime.date, done: bool) -> None: ...
-
-    def __str__(self):
-        return self.name
-
-    __repr__ = __str__
+        result = run_with_loader(mock_function)
+        self.assertEqual(result, "Result")
+        self.assertTrue(mock_echo.called)
 
 
-class HabitList[H: Habit](Protocol):
+class TestClientRetrieval(unittest.TestCase):
+    def test_client_retrieval_success(self):
+        with patch(
+            "your_module.retrieve_client", return_value=MagicMock()
+        ) as mock_retrieve:
+            client = retrieve_client()
+            mock_retrieve.assert_called_once()
+            self.assertIsNotNone(client)
 
-    @property
-    def habits(self) -> List[H]: ...
+    def test_client_retrieval_failure(self):
+        with patch(
+            "your_module.retrieve_client",
+            side_effect=Exception("Failed to retrieve client"),
+        ) as mock_retrieve:
+            try:
+                retrieve_client()
+            except Exception as e:
+                mock_retrieve.assert_called_once()
+                print_error(str(e))
 
-    @property
-    def order(self) -> List[str]: ...
-
-    @order.setter
-    def order(self, value: List[str]) -> None: ...
-
-    async def add(self, name: str) -> None: ...
-
-    async def remove(self, item: H) -> None: ...
-
-    async def get_habit_by(self, habit_id: str) -> Optional[H]: ...
-
-
-class SessionStorage[L: HabitList](Protocol):
-    def get_user_habit_list(self) -> Optional[L]: ...
-
-    def save_user_habit_list(self, habit_list: L) -> None: ...
-
-
-class UserStorage[L: HabitList](Protocol):
-    async def get_user_habit_list(self, user: User) -> Optional[L]: ...
-
-    async def save_user_habit_list(self, user: User, habit_list: L) -> None: ...
-
-    async def merge_user_habit_list(self, user: User, other: L) -> L: ...
